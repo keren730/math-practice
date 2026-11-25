@@ -39,12 +39,16 @@ button{font-family:inherit;color:inherit}
 .mk{background:linear-gradient(transparent 58%,var(--tcl,#f3cfc9) 58%);padding:0 4px}
 .chip{display:flex;flex-direction:column;align-items:flex-start;gap:0;background:var(--hl);border:1.5px solid var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer;box-shadow:0 3px 0 var(--ink);text-align:right}
 .chip .code{unicode-bidi:plaintext}
+.have{width:100%;max-width:400px;text-align:right;font-size:15px}
+.have summary{cursor:pointer;font-weight:800;text-decoration:underline;text-underline-offset:4px;text-align:center}
+.have p{margin:8px 0;color:var(--ink2);line-height:1.45}
 .invitecard{width:100%;max-width:400px;background:var(--hl);border:1.5px solid var(--ink);border-radius:10px;padding:10px 14px;box-shadow:0 4px 0 var(--ink);text-align:center}
 .invitecard b{display:block;font-family:"Secular One",Assistant,sans-serif;font-weight:400;font-size:19px}
 .invitecard .code{display:inline-block;margin:4px 0;padding:2px 14px;background:#fff;border:1.5px solid var(--ink);border-radius:6px;font-size:24px;font-weight:800;unicode-bidi:plaintext}
 .invitecard small{display:block;font-size:13px;line-height:1.4;color:#4a4320}
 .invite{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1.5px dashed var(--ink);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-weight:800}
 .invite .btn{padding:7px 16px;font-size:16px}
+.invite span{flex:1;min-width:170px}.invite span small{display:block;font-weight:600;font-size:12px;line-height:1.35;color:var(--ink2);margin-top:2px}
 .chip b{font-size:16px;line-height:1.2}.chip span{font-size:13px;font-weight:700;color:#4a4320}
 .chip:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
 .nav{display:flex;flex:none;border-top:1.5px solid var(--ink);background:#fff;padding-bottom:env(safe-area-inset-bottom)}
@@ -808,6 +812,7 @@ const CLASS_RE=/^[a-z0-9\u05d0-\u05ea]{4,20}$/; /* אותיות עבריות, א
 const normClass=v=>String(v||'').toLowerCase().replace(/[^a-z0-9\u05d0-\u05ea]/g,'');
 const weekStartOf=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay()); /* השבוע מתחיל ביום ראשון */
 const weekKeyOf=d=>dkey(weekStartOf(d));
+const familyFrom=t=>{const m=String(t||'').toLowerCase().match(/family=([a-z2-9]{20,40})/);if(m)return m[1];const c=String(t||'').trim().toLowerCase();return /^[a-z2-9]{20,40}$/.test(c)?c:''}; /* הקוד האישי מתוך קישור שהודבק */
 const inviteFrom=q=>{const c=normClass(new URLSearchParams(q).get('class')||'');return CLASS_RE.test(c)?c:''}; /* קוד כיתה מקישור הזמנה */
 const inviteUrl=(base,cls)=>base+'?class='+encodeURIComponent(cls);
 function weekPts(st,now=new Date()){const w=weekStartOf(now);let n=0;for(let i=0;i<7;i++)n+=((st&&st.pts)||{})[dkey(new Date(w.getFullYear(),w.getMonth(),w.getDate()+i))]||0;return n}
@@ -959,11 +964,12 @@ function welcomeView(){
   const nm=getName(),fl=[['+','8%','9%','var(--ink)','0s'],['−','76%','5%','var(--red)','1.2s'],['×','10%','60%','#c99a00','.6s'],['÷','80%','56%','var(--ink)','1.8s'],['=','44%','88%','var(--red)','2.4s'],['+','72%','84%','#c99a00','3s']];
   app.innerHTML=`<div class="screen welcome"><div class="floaties" aria-hidden="true">${fl.map(f=>`<span style="top:${f[2]};left:${f[1]};color:${f[3]};animation-delay:${f[4]}">${f[0]}</span>`).join('')}</div>
   <div class="wbody">${MASCOT}<h1>${nm?`היי ${esc(nm)}!<br>מוכנים להמשיך?`:'היי! בואו נתרגל חשבון'}</h1>
-  ${INVITE&&CLOUD_ON()?`<div class="invitecard"><b>הוזמנתם להצטרף לכיתה</b><span class="code" dir="auto">${esc(INVITE)}</span><small>אחרי שמתחילים, הכינוי והנקודות השבועיות יופיעו בלוח הכיתה. אפשר לעזוב בכל רגע.</small></div>`:''}
+  ${INVITE&&CLOUD_ON()?`<div class="invitecard"><b>הוזמנתם להצטרף לכיתה</b><span class="code" dir="auto">${esc(INVITE)}</span><small>אחרי שמתחילים, הכינוי והנקודות השבועיות יופיעו בלוח הכיתה. אפשר לעזוב בכל רגע. כבר התחלתם במכשיר אחר? הדביקו את הקישור האישי למטה.</small></div>`:''}
   <label class="wl" for="nm">איך קוראים לך?</label><input id="nm" class="nameIn" maxlength="16" autocomplete="off" autocapitalize="words" placeholder="הקלידו שם" value="${esc(nm)}">
   <div class="wl">באיזו רמה מתרגלים?</div>
   <div class="lvcards"><button class="lvc ${LV===1?'on':''}" data-act="lv:1">${LVICON[1]}<b>כמו בחוברת</b><small>כמו התרגילים בחוברת</small></button><button class="lvc ${LV===2?'on':''}" data-act="lv:2">${LVICON[2]}<b>אתגר</b><small>קצת יותר קשה</small></button></div>
-  <button class="go" data-act="go">יאללה, מתחילים!</button></div></div>`;
+  <button class="go" data-act="go">יאללה, מתחילים!</button>
+  ${CLOUD_ON()?`<details class="have"><summary>כבר התחלתם במכשיר אחר?</summary><p>הדביקו כאן את הקישור האישי (הכפתור הצהוב ״להמשיך מכל מכשיר״ במכשיר הראשון) וממשיכים בדיוק משם, עם אותו שם, אותה כיתה ואותם ציונים.</p><div class="inrow"><input id="pl" class="nameIn small" dir="ltr" autocomplete="off" autocapitalize="none" placeholder="הדביקו קישור"><button class="btn" data-act="restore"><span>המשך</span></button></div><small id="perr" class="hint err"></small></details>`:''}</div></div>`;
   const i=document.getElementById('nm');i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();ACT.go()}};
 }
 function menuView(){
@@ -1029,7 +1035,7 @@ function classView(){
   if(!ST.cls)return joinView();
   const shown=/^[a-z2-9]{8}$/.test(ST.cls)?ST.cls.slice(0,4)+'-'+ST.cls.slice(4):ST.cls;
   app.innerHTML=`<div class="screen"><header class="appbar"><h2><span class="mk">הכיתה שלי</span></h2><button class="chip" data-copy="${esc(ST.cls)}"><b>קוד הכיתה</b><span dir="auto" class="code">${esc(shown)}</span></button></header>
-  <div class="sbody"><div class="invite"><span>הזמינו חברים לכיתה</span><button class="btn" data-copy="${esc(inviteUrl(location.href.split('#')[0].split('?')[0],ST.cls))}"><span>העתקת קישור הזמנה</span></button></div><div id="board"></div><p class="pnote">הנקודות מתאפסות בכל יום ראשון. תשובה נכונה = נקודה, ובאתגר = 2 נקודות. הקישור שלמעלה מצרף חברים לכיתה בלחיצה אחת.<br><button class="link" data-act="leaveclass">עזיבת הכיתה</button></p></div>${navHtml('class')}</div>`;
+  <div class="sbody"><div class="invite"><span>הזמינו חברים חדשים<small>זה לא הקישור שלכם. במכשיר אחר שלכם? השתמשו בכפתור הצהוב ״להמשיך מכל מכשיר״ במסך הבית.</small></span><button class="btn" data-copy="${esc(inviteUrl(location.href.split('#')[0].split('?')[0],ST.cls))}"><span>העתקת קישור הזמנה</span></button></div><div id="board"></div><p class="pnote">הנקודות מתאפסות בכל יום ראשון. תשובה נכונה = נקודה, ובאתגר = 2 נקודות. הקישור שלמעלה מצרף חברים לכיתה בלחיצה אחת.<br><button class="link" data-act="leaveclass">עזיבת הכיתה</button></p></div>${navHtml('class')}</div>`;
   BOARD_SIG='';paintBoard();startBoard();
 }
 function joinView(){
@@ -1060,6 +1066,12 @@ const ACT={
   resume(){hist('push',{s:'quiz'});resume()},
   discard(){clearRun();route(SCREEN,SARG)},
   lv(v){setLV(Number(v)===2?2:1);if(SCREEN==='welcome')document.querySelectorAll('.lvc').forEach(b=>b.classList.toggle('on',b.dataset.act==='lv:'+LV));else route(SCREEN,SARG)},
+  restore(){
+    const code=familyFrom(document.getElementById('pl').value),err=document.getElementById('perr');
+    if(!code){err.textContent='לא זיהינו קישור אישי. העתיקו אותו שוב מהכפתור הצהוב ״להמשיך מכל מכשיר״.';return}
+    try{localStorage.setItem(FKEY,code)}catch(e){}
+    location.href=location.pathname+'?family='+code+(INVITE?'&class='+encodeURIComponent(INVITE):'');
+  },
   go(){
     const i=document.getElementById('nm'),v=cleanName(i.value);
     if(!v){i.classList.remove('shake');void i.offsetWidth;i.classList.add('shake');i.focus();return}

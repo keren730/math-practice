@@ -77,7 +77,7 @@ test('level 1 place-value generators stay within 100,000 (as in the workbook)', 
 });
 
 // ---- progress statistics (pure helpers) ----
-const helpers = vm.runInContext('({subStat, streak, statsTotal, mergeStats, dkey, esc, cleanName, CLASS_RE, normClass, inviteFrom, inviteUrl, weekStartOf, weekKeyOf, weekPts, memberDoc, rankBoard, tierOf})', ctx);
+const helpers = vm.runInContext('({subStat, streak, statsTotal, mergeStats, dkey, esc, cleanName, CLASS_RE, normClass, familyFrom, inviteFrom, inviteUrl, weekStartOf, weekKeyOf, weekPts, memberDoc, rankBoard, tierOf})', ctx);
 const bits = (n1, n0) => '1'.repeat(n1) + '0'.repeat(n0);
 
 test('subStat: status thresholds use the last-20 window', () => {
@@ -234,4 +234,15 @@ test('mergeStats never replaces richer local progress, but fills missing identit
   assert.equal(helpers.mergeStats(local, null), local);
   const same = { a: { place: { c: 5, t: 9, r: '' } }, log: [], days: {}, name: 'נועה', cls: 'x', mid: 'y' };
   assert.equal(helpers.mergeStats(same, { a: {}, name: 'ללא', cls: 'z', mid: 'w' }), same); // nothing to fill -> same object
+});
+
+test('familyFrom reads the personal code from a pasted link, not the invite code', () => {
+  const code = 'abcdefghjkmnpqrstuvwxyz2';
+  assert.equal(helpers.familyFrom('https://keren730.github.io/math-practice/?family=' + code), code);
+  assert.equal(helpers.familyFrom('  https://x.test/?family=' + code.toUpperCase() + '&class=%D7%93  '), code);
+  assert.equal(helpers.familyFrom(code), code);                                   // the bare code works too
+  assert.equal(helpers.familyFrom('https://x.test/?class=%D7%932%D7%A0%D7%91%D7%95'), '');   // an invite link is not a personal link
+  assert.equal(helpers.familyFrom('?family=short'), '');
+  assert.equal(helpers.familyFrom(''), '');
+  assert.equal(helpers.familyFrom(null), '');
 });
