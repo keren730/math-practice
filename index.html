@@ -136,7 +136,8 @@ details.me{margin:0 4px 30px;background:#fff;border:1.5px solid var(--ink);borde
 .resume{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:#fff6cf;border:1.5px solid var(--ink);border-radius:4px;padding:14px 18px;margin:0 4px 18px}
 .resume .ra{display:flex;gap:14px;align-items:center}
 .share{margin-top:18px;padding:12px 14px;border:1.5px dashed var(--ink);border-radius:4px;background:var(--paper)}
-.share p{margin:4px 0 10px;font-size:15px;color:var(--ink2)}.share small{display:block;margin-top:8px;color:var(--ink2);font-size:13px}
+.share p{margin:4px 0 10px;font-size:15px;color:var(--ink2)}.share .b2{display:block;margin-top:16px}
+.share small{display:block;margin-top:8px;color:var(--ink2);font-size:13px}
 .sharerow{display:flex;gap:10px;flex-wrap:wrap}.sharerow input{flex:1;min-width:160px;font-family:inherit;font-size:14px;direction:ltr;text-align:left;padding:8px 10px;border:1.5px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
 .livebox{margin:0 4px 18px;padding:12px 16px;border:1.5px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink2);font-weight:700}
 .livebox.on{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
@@ -153,7 +154,7 @@ details.me{margin:0 4px 30px;background:#fff;border:1.5px solid var(--ink);borde
 /* ===================== כלי עזר ===================== */
 let LV=1; /* 1 = כמו בחוברת (ברירת מחדל), 2 = אתגר: מעט קשה יותר */
 const QN=20; /* שאלות בכל תרגול */
-const QM=40; /* שאלות במבדק דמה */
+const QM=40; /* שאלות במבדק מלא */
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[R(0,a.length-1)];
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=R(0,i);[a[i],a[j]]=[a[j],a[i]]}return a};
@@ -738,6 +739,10 @@ function mergeStats(local,cloud){ /* אחרי טעינה: מאמצים את הע
   if(cloud&&cloud.a&&statsTotal(cloud)>statsTotal(local))return {a:cloud.a,log:cloud.log||[],days:cloud.days||{}};
   return local;
 }
+function pickRun(localTs,cloud){ /* מה לעשות עם התרגול הלא-גמור: לאמץ מהענן, לשלוח לענן, או כלום */
+  if(!cloud)return localTs?'push':'none';
+  const cu=cloud.u||0;return cu>localTs?'adopt':localTs>cu?'push':'none';
+}
 function ago(ms){const m=Math.round(ms/60000);if(m<1)return 'רגע';if(m===1)return 'דקה';if(m<60)return m+' דקות';const h=Math.round(m/60);if(h===1)return 'שעה';if(h<24)return h+' שעות';const d=Math.round(h/24);return d===1?'יום':d+' ימים'}
 
 /* ===================== ממשק ===================== */
@@ -760,8 +765,8 @@ function rec(sub,ok){ /* תוצאה של שאלה אחת, לפי תת-נושא (
 function logSession(){ST.log.push({t:Date.now(),id:S.id,title:S.title,lv:LV,s:S.score,n:S.qs.length});ST.log=ST.log.slice(-60);saveST()}
 const subGens=s=>s.gens.map(f=>()=>{const q=f();q.sub=s.id;return q});
 function gensFor(id){const s=ALLSUBS.find(x=>x.id===id);if(s)return subGens(s);const t=TOPICS.find(x=>'t_'+x.id===id);return t?t.subs.flatMap(subGens):[]}
-function saveRun(ans){try{localStorage.setItem(RK,JSON.stringify({title:S.title,id:S.id,exact:S.exact,retry:S.retry,qs:S.qs,i:S.i,score:S.score,wrong:S.wrong,ans:!!ans}))}catch(e){}}
-const clearRun=()=>{try{localStorage.removeItem(RK)}catch(e){}};
+function saveRun(ans){try{localStorage.setItem(RK,JSON.stringify({title:S.title,id:S.id,exact:S.exact,retry:S.retry,qs:S.qs,i:S.i,score:S.score,wrong:S.wrong,ans:!!ans,ts:Date.now()}))}catch(e){}cloudRunPush()}
+const clearRun=()=>{try{localStorage.removeItem(RK)}catch(e){}cloudRunPush(true)};
 function loadRun(){try{const r=JSON.parse(localStorage.getItem(RK)||'null');return r&&r.qs&&r.qs.length&&r.i<r.qs.length?r:null}catch(e){return null}}
 function resume(){
   const r=loadRun();if(!r)return home();S={...r,gens:gensFor(r.id),done:false};
@@ -775,7 +780,8 @@ const CLOUD_ON=()=>!!(FBCFG.projectId&&FBCFG.apiKey);
 const FKEY=KEY+'-family',CODE_RE=/^[a-z2-9]{20,40}$/;
 const PARENT=(c=>CODE_RE.test(c)?c:'')((new URLSearchParams(location.search).get('parent')||'').trim().toLowerCase());
 function newCode(){const al='abcdefghjkmnpqrstuvwxyz23456789',b=new Uint8Array(24);crypto.getRandomValues(b);return Array.from(b,x=>al[x%al.length]).join('')}
-let FAM='';if(!PARENT){try{FAM=localStorage.getItem(FKEY)||'';if(!CODE_RE.test(FAM)){FAM=newCode();localStorage.setItem(FKEY,FAM)}}catch(e){FAM=''}}
+const JOIN=PARENT?'':(c=>CODE_RE.test(c)?c:'')((new URLSearchParams(location.search).get('family')||'').trim().toLowerCase());
+let FAM='';if(!PARENT){try{if(JOIN){localStorage.setItem(FKEY,JOIN);try{history.replaceState(null,'',location.pathname)}catch(e){}}FAM=localStorage.getItem(FKEY)||'';if(!CODE_RE.test(FAM)){FAM=newCode();localStorage.setItem(FKEY,FAM)}}catch(e){FAM=''}}
 let FS=null,SYNC='wait',LIVE=null,ONHOME=true,cloudTimer=null;
 async function fs(){
   if(FS)return FS;if(!CLOUD_ON())return null;
@@ -789,16 +795,31 @@ function cloudPush(now){
   cloudTimer=setTimeout(async()=>{const f=await fs();if(!f)return setSync('err');
     try{await f.setDoc(f.doc(f.db,'families',FAM),{s:JSON.stringify(ST),r:JSON.stringify(LIVE?{...LIVE,t:Date.now()}:null),u:Date.now()});setSync('ok')}catch(e){setSync('err')}},now?0:1500);
 }
+let runTimer=null;
+function cloudRunPush(now){ /* התרגול הלא-גמור נשמר בענן, כדי להמשיך ממנו מכל מכשיר */
+  if(PARENT||!FAM||!CLOUD_ON())return;
+  clearTimeout(runTimer);
+  runTimer=setTimeout(async()=>{const f=await fs();if(!f)return;
+    try{const r=loadRun(),p=r?JSON.stringify(r):'';if(p.length>480000)return;
+      await f.setDoc(f.doc(f.db,'runs',FAM),{p,u:r?r.ts||Date.now():Date.now()})}catch(e){}},now?0:2000);
+}
 async function cloudSync(){
   if(PARENT||!FAM||!CLOUD_ON())return;const f=await fs();if(!f)return setSync('err');
   try{const snap=await f.getDoc(f.doc(f.db,'families',FAM));
     if(snap.exists()){const m=mergeStats(ST,JSON.parse(snap.data().s||'null'));if(m!==ST){ST=m;try{localStorage.setItem(SK,JSON.stringify(ST))}catch(e){}if(ONHOME)home()}}
     cloudPush(true)}catch(e){setSync('err')}
+  try{ /* תרגול לא-גמור: הגרסה העדכנית יותר מנצחת */
+    const rs=await f.getDoc(f.doc(f.db,'runs',FAM)),loc=loadRun(),cloud=rs.exists()?rs.data():null,act=pickRun(loc?loc.ts||0:0,cloud);
+    if(act==='adopt'&&ONHOME){try{cloud.p?localStorage.setItem(RK,cloud.p):localStorage.removeItem(RK)}catch(e){}home()}
+    else if(act==='push')cloudRunPush(true);
+  }catch(e){}
 }
 function shareHtml(){
   if(!CLOUD_ON()||!FAM)return '';
   const link=location.href.split('#')[0].split('?')[0]+'?parent='+FAM;
-  return `<div class="share"><b>מבט הורים בזמן אמת</b><p>שלחו את הקישור להורה, כדי לראות את ההתקדמות מכל מכשיר. נשמרים רק ציונים לפי נושא, בלי שמות.</p><div class="sharerow"><input readonly value="${link}" aria-label="קישור למבט הורים"><button class="btn alt" data-copy="${link}">העתקת קישור</button></div><small>${SYNC==='ok'?'מסונכרן לענן ✓':SYNC==='err'?'לא מצליח להתחבר לענן כרגע':'ממתין לסנכרון'}</small></div>`;
+  const base=location.href.split('#')[0].split('?')[0],pl=base+'?parent='+FAM,kl=base+'?family='+FAM;
+  const row=l=>`<div class="sharerow"><input readonly value="${l}" aria-label="קישור"><button class="btn alt" data-copy="${l}">העתקת קישור</button></div>`;
+  return `<div class="share"><b>מבט הורים בזמן אמת</b><p>שלחו את הקישור להורה, כדי לראות את ההתקדמות מכל מכשיר. נשמרים רק ציונים לפי נושא, בלי שמות.</p>${row(pl)}<b class="b2">להמשיך תרגול בכל מכשיר</b><p>הילד או הילדה פותחים את הקישור הזה בכל מכשיר ומתחילים בדיוק מהמקום שעצרו. כדאי לשמור אותו בסימניות. שמרו אותו פרטי, כמו סיסמה.</p>${row(kl)}<small>${SYNC==='ok'?'מסונכרן לענן ✓':SYNC==='err'?'לא מצליח להתחבר לענן כרגע':'ממתין לסנכרון'}</small></div>`;
 }
 let PST='load',CST=null,CRUN=null,CU=0;
 async function parentStart(){
@@ -836,7 +857,7 @@ function progress(st=ST,ro=false){
   const html=`<div class="stats"><div><b>${total}</b><small>שאלות שנענו</small></div><div><b>${total?acc+'%':'—'}</b><small>תשובות נכונות</small></div><div><b>${strong.length}/${rows.length}</b><small>נושאים חזקים</small></div><div><b>${streak(st)}</b><small>ימים ברצף</small></div></div>
    <p class="fbtext">${fb}</p>${weak.length&&!ro?`<button class="btn" data-sub="${weak[0].s.id}">לתרגל: ${weak[0].s.title}</button>`:''}
    <div class="prows">${rows.map(r=>`<${ro?'div':'button'} class="prow ${r.status}"${ro?'':` data-sub="${r.s.id}"`}><span class="pn">${r.s.title}</span><span class="pbar"><i style="width:${r.status==='new'?0:r.acc}%"></i></span><span class="pp">${r.status==='new'?'—':r.acc+'%'}</span><span class="ps">${r.status==='new'&&r.n?'עוד קצת תרגול':STATUS[r.status]}</span></${ro?'div':'button'}>`).join('')}</div>
-   ${st.log.length?`<h3>תרגולים אחרונים</h3><div class="plog">${st.log.slice(-6).reverse().map(l=>{const d=new Date(l.t);return `<div><span>${d.getDate()}.${d.getMonth()+1}</span><span>${l.title}${l.lv===2?' (אתגר)':''}</span><b>${l.s}/${l.n}</b></div>`}).join('')}</div>`:''}
+   ${st.log.length?`<h3>תרגולים אחרונים</h3><div class="plog">${st.log.slice(-6).reverse().map(l=>{const d=new Date(l.t);return `<div><span>${d.getDate()}.${d.getMonth()+1}</span><span>${l.id==='mock'?'מבדק מלא':l.title}${l.lv===2?' (אתגר)':''}</span><b>${l.s}/${l.n}</b></div>`}).join('')}</div>`:''}
    ${ro?'':shareHtml()+`<p class="pnote">${CLOUD_ON()?'':'ההתקדמות נשמרת במכשיר הזה, בדפדפן הזה. '}<button class="link" data-reset="1">איפוס ההתקדמות</button></p>`}`;
   return {sum,html};
 }
@@ -853,7 +874,7 @@ function home(){
   app.innerHTML=`<header class="hero"><div class="kicker">מחברת חשבון · כיתה ד׳</div><h1>תרגול למבדק אמצע</h1><p>שאלות חדשות בכל פעם, לפי כל נושאי המבדק.</p>${cnt?`<div class="count">${cnt}${d>1?' · יום רביעי, 2.12':''}</div>`:''}</header>
   ${run?`<div class="resume"><div><b>יש תרגול שלא סיימתם</b><div>${run.title} · שאלה ${Math.min(run.ans?run.i+2:run.i+1,run.qs.length)} מתוך ${run.qs.length}</div></div><div class="ra"><button class="btn" data-resume="1">להמשיך</button><button class="link" data-discard="1">ביטול התרגול</button></div></div>`:''}
   <div class="lvl"><span class="lbl2">רמת קושי</span><div class="seg" role="group" aria-label="רמת קושי"><button class="${LV===1?'on':''}" data-lv="1">כמו בחוברת</button><button class="${LV===2?'on':''}" data-lv="2">אתגר</button></div><span class="hint">${LV===1?'ברמה של התרגילים בחוברת':'קצת יותר קשה מהחוברת'}</span></div>
-  <div class="mix"><div><h2>מבדק דמה</h2><div>${QM} שאלות מכל הנושאים, כמו במבדק האמיתי</div></div><button class="btn light big" data-mock="1">מתחילים</button></div>
+  <div class="mix"><div><h2>מבדק מלא</h2><div>${QM} שאלות מכל הנושאים, כמו במבדק האמיתי</div></div><button class="btn light big" data-mock="1">מתחילים</button></div>
   <p class="tip"><b>טיפ:</b> מומלץ להתחיל ממה שנראה קשה. אחרי כל שאלה מקבלים הסבר, גם כשצדקתם.</p>
   <details class="me"><summary><span class="mk">ההתקדמות שלי</span><span class="sum">${pg.sum}</span></summary>${pg.html}</details>
   ${TOPICS.map((t,ti)=>`<section class="topic" style="--tc:${t.color};--tcl:${t.color}38"><header><h2><span class="tn">${ti+1}</span><span class="mk">${t.title}</span></h2><button class="link" data-topic="${t.id}">תרגול מעורב בנושא</button></header>
@@ -861,13 +882,13 @@ function home(){
   app.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV=Number(b.dataset.lv);try{localStorage.setItem(KEY+'-lv',LV)}catch(e){}home()});
   app.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{const s=ALLSUBS.find(x=>x.id===b.dataset.sub);start(s.title,subGens(s),QN,s.id)});
   app.querySelectorAll('[data-topic]').forEach(b=>b.onclick=()=>{const t=TOPICS.find(x=>x.id===b.dataset.topic);start(t.title+' – תרגול מעורב',t.subs.flatMap(subGens),QN,'t_'+t.id)});
-  const cp=app.querySelector('[data-copy]');if(cp)cp.onclick=async()=>{try{await navigator.clipboard.writeText(cp.dataset.copy)}catch(e){const i=app.querySelector('.sharerow input');i.select();try{document.execCommand('copy')}catch(_){}}cp.textContent='הועתק ✓'};
-  const si=app.querySelector('.sharerow input');if(si)si.onclick=()=>si.select();
+  app.querySelectorAll('[data-copy]').forEach(cp=>cp.onclick=async()=>{try{await navigator.clipboard.writeText(cp.dataset.copy)}catch(e){const i=cp.previousElementSibling;i.select();try{document.execCommand('copy')}catch(_){}}cp.textContent='הועתק ✓'});
+  app.querySelectorAll('.sharerow input').forEach(si=>si.onclick=()=>si.select());
   const rs=app.querySelector('[data-resume]');if(rs)rs.onclick=resume;
   const dc=app.querySelector('[data-discard]');if(dc)dc.onclick=()=>{clearRun();home()};
   const rz=app.querySelector('[data-reset]');if(rz)rz.onclick=()=>{if(confirm('למחוק את כל ההתקדמות והשיאים?')){ST={a:{},log:[],days:{}};BEST={};try{localStorage.removeItem(SK);localStorage.removeItem(KEY);localStorage.removeItem(RK)}catch(e){}cloudPush(true);home()}};
   app.querySelector('[data-mock]').onclick=()=>{
-    const fs=mockGens();start('מבדק דמה',fs,fs.length,'mock',true)};
+    const fs=mockGens();start('מבדק מלא',fs,fs.length,'mock',true)};
   window.scrollTo(0,0);
 }
 function build(gens,n,exact){

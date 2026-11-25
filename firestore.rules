@@ -20,5 +20,15 @@ service cloud.firestore {
         && request.resource.data.r is string && request.resource.data.r.size() < 2000
         && request.resource.data.u is number;
     }
+
+    // The child's unfinished practice, so it can be resumed on any device.
+    match /runs/{code} {
+      allow get: if code.matches('[a-z2-9]{20,40}');
+
+      allow create, update: if code.matches('[a-z2-9]{20,40}')
+        && request.resource.data.keys().hasOnly(['p', 'u'])
+        && request.resource.data.p is string && request.resource.data.p.size() < 500000
+        && request.resource.data.u is number;
+    }
   }
 }

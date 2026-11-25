@@ -116,3 +116,14 @@ test('ago formats elapsed time in Hebrew', () => {
   assert.equal(helpers.ago(3 * 3600 * 1000), '3 שעות');
   assert.equal(helpers.ago(2 * 86400 * 1000), '2 ימים');
 });
+
+test('pickRun: the newer copy of an unfinished practice wins', () => {
+  const { pickRun } = vm.runInContext('({pickRun})', ctx);
+  assert.equal(pickRun(0, null), 'none');                 // nothing anywhere
+  assert.equal(pickRun(500, null), 'push');               // only local -> upload
+  assert.equal(pickRun(0, { u: 700, p: '{}' }), 'adopt');  // only cloud -> download
+  assert.equal(pickRun(500, { u: 700, p: '{}' }), 'adopt');
+  assert.equal(pickRun(900, { u: 700, p: '{}' }), 'push');
+  assert.equal(pickRun(700, { u: 700, p: '{}' }), 'none');
+  assert.equal(pickRun(500, { u: 700, p: '' }), 'adopt'); // finished elsewhere -> clear local
+});
