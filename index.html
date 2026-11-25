@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Secular+One&display=swap" rel="stylesheet">
 <meta name="theme-color" content="#fbf8f0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231b2b5e'/%3E%3Cg fill='%23fff'%3E%3Crect x='12' y='18' width='16' height='4' rx='2'/%3E%3Crect x='18' y='12' width='4' height='16' rx='2'/%3E%3Crect x='36' y='18' width='16' height='4' rx='2'/%3E%3C/g%3E%3Cpath d='M14 38l12 12M26 38L14 50' stroke='%23ffe27a' stroke-width='4' stroke-linecap='round' fill='none'/%3E%3Cg fill='%23ffe27a'%3E%3Crect x='36' y='42' width='16' height='4' rx='2'/%3E%3Ccircle cx='44' cy='35.5' r='2.8'/%3E%3Ccircle cx='44' cy='52.5' r='2.8'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{--paper:#fbf8f0;--grid:#e1e8f3;--ink:#1b2b5e;--ink2:#56628a;--line:#c5cfe3;--red:#c23b2e;--hl:#ffe27a;--ok:#2d7a4b;--okbg:#eaf4ed;--bad:#b3342a;--badbg:#fcebe8}
 *{box-sizing:border-box}
@@ -135,14 +137,10 @@ details.me{margin:0 4px 30px;background:#fff;border:1.5px solid var(--ink);borde
 .pnote{margin:16px 18px 0;font-size:14px;color:var(--ink2)}.pnote .link{font-size:14px}
 .resume{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:#fff6cf;border:1.5px solid var(--ink);border-radius:4px;padding:14px 18px;margin:0 4px 18px}
 .resume .ra{display:flex;gap:14px;align-items:center}
-.share{margin-top:18px;padding:12px 14px;border:1.5px dashed var(--ink);border-radius:4px;background:var(--paper)}
-.share p{margin:4px 0 10px;font-size:15px;color:var(--ink2)}.share .b2{display:block;margin-top:16px}
-.share small{display:block;margin-top:8px;color:var(--ink2);font-size:13px}
-.sharerow{display:flex;gap:10px;flex-wrap:wrap}.sharerow input{flex:1;min-width:160px;font-family:inherit;font-size:14px;direction:ltr;text-align:left;padding:8px 10px;border:1.5px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
-.livebox{margin:0 4px 18px;padding:12px 16px;border:1.5px solid var(--ink);border-radius:4px;background:#fff;color:var(--ink2);font-weight:700}
-.livebox.on{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
-.dot{display:inline-block;width:10px;height:10px;margin-left:8px;border-radius:50%;background:var(--ok);animation:pulse 1.4s infinite}
-@keyframes pulse{50%{opacity:.25}}
+.cont{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px;padding:13px 16px;background:var(--hl);border:1.5px solid var(--ink);border-radius:4px}
+.cont b{display:block;font-family:"Secular One",Assistant,sans-serif;font-weight:400;font-size:20px;line-height:1.2}
+.cont span{display:block;font-size:15px;line-height:1.45;max-width:46ch}
+.cont small{display:block;margin-top:4px;font-size:13px;color:#4a4320}
 @media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr);row-gap:12px}.prow{grid-template-columns:1fr 70px 40px;row-gap:2px}.prow .pn{grid-column:1/-1}.prow .ps{grid-column:1/-1;margin-top:-2px}}
 @media(max-width:520px){#app{padding:14px 22px 60px 8px}#app::before{right:8px}h1{font-size:29px}.qtext{font-size:20px}.card{padding:16px}.hero{padding:14px 16px 16px}.subs{grid-template-columns:1fr}.pv th{font-size:11px;min-width:40px;padding:4px 2px}.pv td{font-size:22px;min-width:40px;height:44px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -743,7 +741,6 @@ function pickRun(localTs,cloud){ /* מה לעשות עם התרגול הלא-ג�
   if(!cloud)return localTs?'push':'none';
   const cu=cloud.u||0;return cu>localTs?'adopt':localTs>cu?'push':'none';
 }
-function ago(ms){const m=Math.round(ms/60000);if(m<1)return 'רגע';if(m===1)return 'דקה';if(m<60)return m+' דקות';const h=Math.round(m/60);if(h===1)return 'שעה';if(h<24)return h+' שעות';const d=Math.round(h/24);return d===1?'יום':d+' ימים'}
 
 /* ===================== ממשק ===================== */
 if(typeof document!=='undefined'){
@@ -773,38 +770,37 @@ function resume(){
   if(r.ans){if(r.i<r.qs.length-1){S.i=r.i+1;show()}else finish()}else show();
 }
 const STATUS={strong:'חזק',ok:'בדרך',weak:'כדאי לתרגל',new:'עוד לא תרגלתם'};
-/* ===== סנכרון ל-Firestore (מבט הורים בזמן אמת) ===== */
+/* ===== סנכרון ל-Firestore: התקדמות ותרגול לא-גמור, כדי להמשיך מכל מכשיר ===== */
 const FBCFG={apiKey:'AIzaSyA2ZVy4ywVC4uSk9Pp8NMjcRH5qFo2Sj1E',projectId:'piggy-bank-66b8c',appId:'1:304559144062:web:ef47dd3bd59a95baa66c2f'}; /* ← למלא אחרי יצירת פרויקט Firebase (ראו firestore.rules) */
 const FB_DB='math-practice'; /* שם מסד הנתונים הייעודי בפרויקט (נפרד ממסדי הנתונים האחרים) */
 const CLOUD_ON=()=>!!(FBCFG.projectId&&FBCFG.apiKey);
 const FKEY=KEY+'-family',CODE_RE=/^[a-z2-9]{20,40}$/;
-const PARENT=(c=>CODE_RE.test(c)?c:'')((new URLSearchParams(location.search).get('parent')||'').trim().toLowerCase());
 function newCode(){const al='abcdefghjkmnpqrstuvwxyz23456789',b=new Uint8Array(24);crypto.getRandomValues(b);return Array.from(b,x=>al[x%al.length]).join('')}
-const JOIN=PARENT?'':(c=>CODE_RE.test(c)?c:'')((new URLSearchParams(location.search).get('family')||'').trim().toLowerCase());
-let FAM='';if(!PARENT){try{if(JOIN){localStorage.setItem(FKEY,JOIN);try{history.replaceState(null,'',location.pathname)}catch(e){}}FAM=localStorage.getItem(FKEY)||'';if(!CODE_RE.test(FAM)){FAM=newCode();localStorage.setItem(FKEY,FAM)}}catch(e){FAM=''}}
-let FS=null,SYNC='wait',LIVE=null,ONHOME=true,cloudTimer=null;
+const JOIN=(c=>CODE_RE.test(c)?c:'')((new URLSearchParams(location.search).get('family')||'').trim().toLowerCase());
+let FAM='';try{if(JOIN){localStorage.setItem(FKEY,JOIN);try{history.replaceState(null,'',location.pathname)}catch(e){}}FAM=localStorage.getItem(FKEY)||'';if(!CODE_RE.test(FAM)){FAM=newCode();localStorage.setItem(FKEY,FAM)}}catch(e){FAM=''}
+let FS=null,SYNC='wait',ONHOME=true,cloudTimer=null;
 async function fs(){
   if(FS)return FS;if(!CLOUD_ON())return null;
   try{const V='10.12.2',[a,f]=await Promise.all([import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`)]);
-    FS={db:f.getFirestore(a.initializeApp(FBCFG),FB_DB),doc:f.doc,setDoc:f.setDoc,getDoc:f.getDoc,onSnapshot:f.onSnapshot};return FS}catch(e){return null}
+    FS={db:f.getFirestore(a.initializeApp(FBCFG),FB_DB),doc:f.doc,setDoc:f.setDoc,getDoc:f.getDoc};return FS}catch(e){return null}
 }
-function setSync(v){SYNC=v;const el=document.querySelector('.share small');if(el)el.textContent=v==='ok'?'מסונכרן לענן ✓':v==='err'?'לא מצליח להתחבר לענן כרגע':'ממתין לסנכרון'}
+function setSync(v){SYNC=v;const el=document.querySelector('.cont small');if(el)el.textContent=v==='ok'?'מסונכרן לענן ✓':v==='err'?'לא מצליח להתחבר לענן כרגע':'ממתין לסנכרון'}
 function cloudPush(now){
-  if(PARENT||!FAM||!CLOUD_ON())return;
+  if(!FAM||!CLOUD_ON())return;
   clearTimeout(cloudTimer);
   cloudTimer=setTimeout(async()=>{const f=await fs();if(!f)return setSync('err');
-    try{await f.setDoc(f.doc(f.db,'families',FAM),{s:JSON.stringify(ST),r:JSON.stringify(LIVE?{...LIVE,t:Date.now()}:null),u:Date.now()});setSync('ok')}catch(e){setSync('err')}},now?0:1500);
+    try{await f.setDoc(f.doc(f.db,'families',FAM),{s:JSON.stringify(ST),r:'null',u:Date.now()});setSync('ok')}catch(e){setSync('err')}},now?0:1500);
 }
 let runTimer=null;
 function cloudRunPush(now){ /* התרגול הלא-גמור נשמר בענן, כדי להמשיך ממנו מכל מכשיר */
-  if(PARENT||!FAM||!CLOUD_ON())return;
+  if(!FAM||!CLOUD_ON())return;
   clearTimeout(runTimer);
   runTimer=setTimeout(async()=>{const f=await fs();if(!f)return;
     try{const r=loadRun(),p=r?JSON.stringify(r):'';if(p.length>480000)return;
       await f.setDoc(f.doc(f.db,'runs',FAM),{p,u:r?r.ts||Date.now():Date.now()})}catch(e){}},now?0:2000);
 }
 async function cloudSync(){
-  if(PARENT||!FAM||!CLOUD_ON())return;const f=await fs();if(!f)return setSync('err');
+  if(!FAM||!CLOUD_ON())return;const f=await fs();if(!f)return setSync('err');
   try{const snap=await f.getDoc(f.doc(f.db,'families',FAM));
     if(snap.exists()){const m=mergeStats(ST,JSON.parse(snap.data().s||'null'));if(m!==ST){ST=m;try{localStorage.setItem(SK,JSON.stringify(ST))}catch(e){}if(ONHOME)home()}}
     cloudPush(true)}catch(e){setSync('err')}
@@ -814,35 +810,12 @@ async function cloudSync(){
     else if(act==='push')cloudRunPush(true);
   }catch(e){}
 }
-function shareHtml(){
+function contLink(){ /* קישור להמשך תרגול מכל מכשיר: מוצג בכותרת */
   if(!CLOUD_ON()||!FAM)return '';
-  const link=location.href.split('#')[0].split('?')[0]+'?parent='+FAM;
-  const base=location.href.split('#')[0].split('?')[0],pl=base+'?parent='+FAM,kl=base+'?family='+FAM;
-  const row=l=>`<div class="sharerow"><input readonly value="${l}" aria-label="קישור"><button class="btn alt" data-copy="${l}">העתקת קישור</button></div>`;
-  return `<div class="share"><b>מבט הורים בזמן אמת</b><p>שלחו את הקישור להורה, כדי לראות את ההתקדמות מכל מכשיר. נשמרים רק ציונים לפי נושא, בלי שמות.</p>${row(pl)}<b class="b2">להמשיך תרגול בכל מכשיר</b><p>הילד או הילדה פותחים את הקישור הזה בכל מכשיר ומתחילים בדיוק מהמקום שעצרו. כדאי לשמור אותו בסימניות. שמרו אותו פרטי, כמו סיסמה.</p>${row(kl)}<small>${SYNC==='ok'?'מסונכרן לענן ✓':SYNC==='err'?'לא מצליח להתחבר לענן כרגע':'ממתין לסנכרון'}</small></div>`;
+  const kl=location.href.split('#')[0].split('?')[0]+'?family='+FAM;
+  return `<div class="cont"><div><b>להמשיך מכל מכשיר</b><span>שמרו את הקישור בסימניות. פותחים אותו בכל מכשיר וממשיכים בדיוק מאיפה שעצרתם. הקישור פרטי, כמו סיסמה.</span><small>${SYNC==='ok'?'מסונכרן לענן ✓':SYNC==='err'?'לא מצליח להתחבר לענן כרגע':'ממתין לסנכרון'}</small></div><button class="btn" data-copy="${kl}">העתקת קישור</button></div>`;
 }
-let PST='load',CST=null,CRUN=null,CU=0;
-async function parentStart(){
-  renderParent();const f=await fs();
-  if(!f){PST=CLOUD_ON()?'err':'off';return renderParent()}
-  f.onSnapshot(f.doc(f.db,'families',PARENT),snap=>{
-    if(snap.exists()){const d=snap.data();try{CST=JSON.parse(d.s);CRUN=JSON.parse(d.r||'null');CU=d.u||0;PST='ok'}catch(e){PST='err'}}else PST='empty';
-    renderParent()},()=>{PST='err';renderParent()});
-  setInterval(renderParent,20000);
-}
-function renderParent(){
-  const head=`<header class="hero"><div class="kicker">מבט הורים</div><h1>ההתקדמות בתרגול</h1><p>מתעדכן בזמן אמת מהמכשיר שבו מתרגלים.</p></header>`;
-  const msg=t=>`<p class="tip">${t}</p>`;let body;
-  if(PST==='load')body=msg('טוענים…');
-  else if(PST==='off')body=msg('הצפייה מרחוק עדיין לא הוגדרה באתר.');
-  else if(PST==='err')body=msg('לא הצלחנו להתחבר. בדקו את החיבור לאינטרנט ורעננו את הדף.');
-  else if(PST==='empty')body=msg('עוד אין נתונים לקוד הזה. אחרי שיושלמו שאלות במכשיר של הילד או הילדה, ההתקדמות תופיע כאן.');
-  else{const r=CRUN,on=r&&Date.now()-r.t<120000,pg=progress(CST||{a:{},log:[],days:{}},true);
-    body=`<div class="livebox ${on?'on':''}">${on?`<span class="dot"></span>מתרגלים עכשיו: ${r.title} · שאלה ${r.i+1} מתוך ${r.n} · ${r.score} נכונות עד כה`:`לא מתרגלים כרגע${CU?` · עודכן לפני ${ago(Date.now()-CU)}`:''}`}</div>
-    <details class="me" open><summary><span class="mk">ההתקדמות</span><span class="sum">${pg.sum}</span></summary>${pg.html}</details>`}
-  app.innerHTML=head+body;
-}
-function progress(st=ST,ro=false){
+function progress(st=ST){
   const rows=ALLSUBS.map(s=>({s,...subStat(s.id,st)}));
   const total=rows.reduce((a,r)=>a+r.t,0),corr=rows.reduce((a,r)=>a+r.c,0),acc=total?Math.round(corr/total*100):0;
   const strong=rows.filter(r=>r.status==='strong'),weak=rows.filter(r=>r.status==='weak').sort((a,b)=>a.acc-b.acc),fresh=rows.filter(r=>r.status==='new');
@@ -855,10 +828,10 @@ function progress(st=ST,ro=false){
     else fb+='אין כרגע נושא חלש. כל הכבוד!'}
   const sum=total?`${total} שאלות · ${acc}% נכון · ${strong.length} מתוך ${rows.length} נושאים חזקים`:'עוד לא התחלתם';
   const html=`<div class="stats"><div><b>${total}</b><small>שאלות שנענו</small></div><div><b>${total?acc+'%':'—'}</b><small>תשובות נכונות</small></div><div><b>${strong.length}/${rows.length}</b><small>נושאים חזקים</small></div><div><b>${streak(st)}</b><small>ימים ברצף</small></div></div>
-   <p class="fbtext">${fb}</p>${weak.length&&!ro?`<button class="btn" data-sub="${weak[0].s.id}">לתרגל: ${weak[0].s.title}</button>`:''}
-   <div class="prows">${rows.map(r=>`<${ro?'div':'button'} class="prow ${r.status}"${ro?'':` data-sub="${r.s.id}"`}><span class="pn">${r.s.title}</span><span class="pbar"><i style="width:${r.status==='new'?0:r.acc}%"></i></span><span class="pp">${r.status==='new'?'—':r.acc+'%'}</span><span class="ps">${r.status==='new'&&r.n?'עוד קצת תרגול':STATUS[r.status]}</span></${ro?'div':'button'}>`).join('')}</div>
+   <p class="fbtext">${fb}</p>${weak.length?`<button class="btn" data-sub="${weak[0].s.id}">לתרגל: ${weak[0].s.title}</button>`:''}
+   <div class="prows">${rows.map(r=>`<button class="prow ${r.status}" data-sub="${r.s.id}"><span class="pn">${r.s.title}</span><span class="pbar"><i style="width:${r.status==='new'?0:r.acc}%"></i></span><span class="pp">${r.status==='new'?'—':r.acc+'%'}</span><span class="ps">${r.status==='new'&&r.n?'עוד קצת תרגול':STATUS[r.status]}</span></button>`).join('')}</div>
    ${st.log.length?`<h3>תרגולים אחרונים</h3><div class="plog">${st.log.slice(-6).reverse().map(l=>{const d=new Date(l.t);return `<div><span>${d.getDate()}.${d.getMonth()+1}</span><span>${l.id==='mock'?'מבדק מלא':l.title}${l.lv===2?' (אתגר)':''}</span><b>${l.s}/${l.n}</b></div>`}).join('')}</div>`:''}
-   ${ro?'':shareHtml()+`<p class="pnote">${CLOUD_ON()?'':'ההתקדמות נשמרת במכשיר הזה, בדפדפן הזה. '}<button class="link" data-reset="1">איפוס ההתקדמות</button></p>`}`;
+   <p class="pnote">${CLOUD_ON()?'':'ההתקדמות נשמרת במכשיר הזה, בדפדפן הזה. '}<button class="link" data-reset="1">איפוס ההתקדמות</button></p>`;
   return {sum,html};
 }
 
@@ -868,10 +841,10 @@ function mockGens(){ /* QM שאלות: חלוקה שווה בין תתי-הנו�
 }
 function daysLeft(){const t=new Date(2026,11,2),n=new Date();const a=new Date(n.getFullYear(),n.getMonth(),n.getDate());return Math.round((t-a)/86400000)}
 function home(){
-  ONHOME=true;if(LIVE){LIVE=null;cloudPush()}
+  ONHOME=true;
   const d=daysLeft(),run=loadRun(),pg=progress();
   const cnt=d>1?`נשארו ${d} ימים למבדק`:d===1?'המבדק מחר! בהצלחה':d===0?'המבדק היום! בהצלחה, אתם מוכנים':'';
-  app.innerHTML=`<header class="hero"><div class="kicker">מחברת חשבון · כיתה ד׳</div><h1>תרגול למבדק אמצע</h1><p>שאלות חדשות בכל פעם, לפי כל נושאי המבדק.</p>${cnt?`<div class="count">${cnt}${d>1?' · יום רביעי, 2.12':''}</div>`:''}</header>
+  app.innerHTML=`<header class="hero"><div class="kicker">מחברת חשבון · כיתה ד׳</div><h1>תרגול למבדק אמצע</h1><p>שאלות חדשות בכל פעם, לפי כל נושאי המבדק.</p>${cnt?`<div class="count">${cnt}${d>1?' · יום רביעי, 2.12':''}</div>`:''}${contLink()}</header>
   ${run?`<div class="resume"><div><b>יש תרגול שלא סיימתם</b><div>${run.title} · שאלה ${Math.min(run.ans?run.i+2:run.i+1,run.qs.length)} מתוך ${run.qs.length}</div></div><div class="ra"><button class="btn" data-resume="1">להמשיך</button><button class="link" data-discard="1">ביטול התרגול</button></div></div>`:''}
   <div class="lvl"><span class="lbl2">רמת קושי</span><div class="seg" role="group" aria-label="רמת קושי"><button class="${LV===1?'on':''}" data-lv="1">כמו בחוברת</button><button class="${LV===2?'on':''}" data-lv="2">אתגר</button></div><span class="hint">${LV===1?'ברמה של התרגילים בחוברת':'קצת יותר קשה מהחוברת'}</span></div>
   <div class="mix"><div><h2>מבדק מלא</h2><div>${QM} שאלות מכל הנושאים, כמו במבדק האמיתי</div></div><button class="btn light big" data-mock="1">מתחילים</button></div>
@@ -882,8 +855,7 @@ function home(){
   app.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV=Number(b.dataset.lv);try{localStorage.setItem(KEY+'-lv',LV)}catch(e){}home()});
   app.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{const s=ALLSUBS.find(x=>x.id===b.dataset.sub);start(s.title,subGens(s),QN,s.id)});
   app.querySelectorAll('[data-topic]').forEach(b=>b.onclick=()=>{const t=TOPICS.find(x=>x.id===b.dataset.topic);start(t.title+' – תרגול מעורב',t.subs.flatMap(subGens),QN,'t_'+t.id)});
-  app.querySelectorAll('[data-copy]').forEach(cp=>cp.onclick=async()=>{try{await navigator.clipboard.writeText(cp.dataset.copy)}catch(e){const i=cp.previousElementSibling;i.select();try{document.execCommand('copy')}catch(_){}}cp.textContent='הועתק ✓'});
-  app.querySelectorAll('.sharerow input').forEach(si=>si.onclick=()=>si.select());
+  app.querySelectorAll('[data-copy]').forEach(cp=>cp.onclick=async()=>{const t=cp.dataset.copy;try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(_){}a.remove()}cp.textContent='הועתק ✓'});
   const rs=app.querySelector('[data-resume]');if(rs)rs.onclick=resume;
   const dc=app.querySelector('[data-discard]');if(dc)dc.onclick=()=>{clearRun();home()};
   const rz=app.querySelector('[data-reset]');if(rz)rz.onclick=()=>{if(confirm('למחוק את כל ההתקדמות והשיאים?')){ST={a:{},log:[],days:{}};BEST={};try{localStorage.removeItem(SK);localStorage.removeItem(KEY);localStorage.removeItem(RK)}catch(e){}cloudPush(true);home()}};
@@ -899,7 +871,7 @@ function build(gens,n,exact){
 }
 function start(title,gens,n,id,exact){S={title,gens,id,qs:build(gens,n,exact),i:0,score:0,wrong:[],done:false,exact:!!exact};show()}
 function show(){
-  const q=S.qs[S.i],n=S.qs.length;S.done=false;saveRun();ONHOME=false;LIVE={title:S.title,i:S.i,n,score:S.score};cloudPush();
+  const q=S.qs[S.i],n=S.qs.length;S.done=false;saveRun();ONHOME=false;
   app.innerHTML=`<div class="top"><button class="back" id="exit">→ חזרה לתפריט</button><div class="prog" aria-hidden="true">${Array.from({length:n},(_,k)=>`<i class="${k<S.i?'on':k===S.i?'cur':''}"></i>`).join('')}</div><span class="cnt">${S.i+1} מתוך ${n}</span></div>
   <div class="card"><div class="qhead"><span class="qn">${S.i+1}</span><span>${S.title}</span></div>${q.svg?`<div class="figwrap">${q.svg}</div>`:''}<div class="qtext">${q.q}</div>
   <div id="ans">${q.type==='num'?`<div class="numrow"><input id="in" type="text" inputmode="numeric" autocomplete="off" aria-label="התשובה שלכם" placeholder="התשובה"><span class="unit">${q.unit}</span><button class="btn" id="chk">בדיקה</button></div>`
@@ -915,7 +887,7 @@ function answer(ok,val){
   if(S.done)return;S.done=true;const q=S.qs[S.i];
   if(ok)S.score++;else S.wrong.push(q);
   if(!S.retry)rec(q.sub,ok);
-  saveRun(true);LIVE={title:S.title,i:S.i,n:S.qs.length,score:S.score};cloudPush();
+  saveRun(true);
   let corr;
   if(q.type==='num'){const inp=document.getElementById('in');inp.disabled=true;inp.classList.add(ok?'right':'wrong');document.getElementById('chk').disabled=true;corr=`<span class="eq">${fmt(q.answer)}</span> ${q.unit}`}
   else{document.querySelectorAll('.opt').forEach((b,i)=>{b.disabled=true;if(q.options[i].ok)b.classList.add('right');else if(i===val)b.classList.add('wrong')});corr=q.options.find(o=>o.ok).h}
@@ -929,7 +901,7 @@ function finish(){
   const n=S.qs.length,p=Math.round(S.score/n*100);const stars=p>=90?3:p>=70?2:p>=50?1:0;
   if(S.id&&!S.retry)saveBest(S.id+(LV===2?'_h':''),p);
   if(!S.retry)logSession();
-  clearRun();ONHOME=false;LIVE=null;cloudPush(true);
+  clearRun();ONHOME=false;cloudPush(true);
   const msg=p>=90?'מדהים! אתם מוכנים למבדק':p>=70?'עבודה טובה! עוד קצת תרגול והכול יושב':p>=50?'התחלה טובה. כדאי לחזור על ההסברים ולנסות שוב':'לא נורא, כל תרגול מקדם. נסו שוב אחרי שתקראו את ההסברים';
   app.innerHTML=`<div class="card result"><h1>סיימתם!</h1><div class="stars" aria-label="${stars} כוכבים מתוך 3">${'★'.repeat(stars)}<span>${'★'.repeat(3-stars)}</span></div><div class="grade"><b>${S.score}</b><small>מתוך ${n}</small></div><p>${msg}</p>
   <div class="actions">${S.wrong.length?`<button class="btn big" id="rw">לתרגל שוב את הטעויות (${S.wrong.length})</button>`:''}<button class="btn big alt" id="again">סבב חדש</button><button class="btn big alt" id="hm">לתפריט</button></div>
@@ -939,7 +911,7 @@ function finish(){
   document.getElementById('hm').onclick=home;window.scrollTo(0,0);
 }
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&S&&S.done){const nx=document.getElementById('nx');if(nx&&document.activeElement!==nx){e.preventDefault();nx.click()}}});
-if(PARENT)parentStart();else{home();cloudSync();document.addEventListener('visibilitychange',()=>{if(document.hidden)cloudPush(true)})}
+home();cloudSync();document.addEventListener('visibilitychange',()=>{if(document.hidden){cloudPush(true);cloudRunPush(true)}});
 }
 </script>
 </body>

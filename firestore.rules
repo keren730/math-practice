@@ -6,7 +6,7 @@ rules_version = '2';
 // project have their own rules and are not affected.
 //
 // Each family has one document, families/<code>. The code is a long random
-// string kept in the child's browser and in the parent link, and acts as the
+// string kept in the child's browser and in the child's link, and acts as the
 // password: a document can be read or written only by someone who knows its
 // exact code. Listing/browsing all families and deleting are not allowed.
 service cloud.firestore {

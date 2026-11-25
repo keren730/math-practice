@@ -77,7 +77,7 @@ test('level 1 place-value generators stay within 100,000 (as in the workbook)', 
 });
 
 // ---- progress statistics (pure helpers) ----
-const helpers = vm.runInContext('({subStat, streak, statsTotal, mergeStats, ago, dkey})', ctx);
+const helpers = vm.runInContext('({subStat, streak, statsTotal, mergeStats, dkey})', ctx);
 const bits = (n1, n0) => '1'.repeat(n1) + '0'.repeat(n0);
 
 test('subStat: status thresholds use the last-20 window', () => {
@@ -109,13 +109,6 @@ test('mergeStats adopts the cloud copy only when it has more answers', () => {
   assert.equal(JSON.stringify([m.log, m.days]), '[[],{}]');
 });
 
-test('ago formats elapsed time in Hebrew', () => {
-  assert.equal(helpers.ago(10 * 1000), 'רגע');
-  assert.equal(helpers.ago(60 * 1000), 'דקה');
-  assert.equal(helpers.ago(5 * 60 * 1000), '5 דקות');
-  assert.equal(helpers.ago(3 * 3600 * 1000), '3 שעות');
-  assert.equal(helpers.ago(2 * 86400 * 1000), '2 ימים');
-});
 
 test('pickRun: the newer copy of an unfinished practice wins', () => {
   const { pickRun } = vm.runInContext('({pickRun})', ctx);
