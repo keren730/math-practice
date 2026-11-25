@@ -75,3 +75,44 @@ test('level 1 place-value generators stay within 100,000 (as in the workbook)', 
     }
   }
 });
+
+// ---- progress statistics (pure helpers) ----
+const helpers = vm.runInContext('({subStat, streak, statsTotal, mergeStats, ago, dkey})', ctx);
+const bits = (n1, n0) => '1'.repeat(n1) + '0'.repeat(n0);
+
+test('subStat: status thresholds use the last-20 window', () => {
+  const st = { a: { x: { c: 0, t: 0, r: bits(2, 0) }, s: { c: 0, t: 0, r: bits(18, 2) }, o: { c: 0, t: 0, r: bits(15, 5) }, w: { c: 0, t: 0, r: bits(10, 10) }, f: { c: 0, t: 0, r: bits(9, 1) } }, log: [], days: {} };
+  assert.equal(helpers.subStat('missing', st).status, 'new');
+  assert.equal(helpers.subStat('x', st).status, 'new');     // < 5 answers
+  assert.equal(helpers.subStat('s', st).status, 'strong');  // 90%
+  assert.equal(helpers.subStat('o', st).status, 'ok');      // 75%
+  assert.equal(helpers.subStat('w', st).status, 'weak');    // 50%
+  assert.equal(helpers.subStat('f', st).status, 'strong');  // 90% with exactly 10 answers
+});
+
+test('streak counts consecutive days ending today or yesterday', () => {
+  const day = back => { const d = new Date(); d.setDate(d.getDate() - back); return helpers.dkey(d); };
+  assert.equal(helpers.streak({ days: {} }), 0);
+  assert.equal(helpers.streak({ days: { [day(0)]: 3, [day(1)]: 2, [day(2)]: 5 } }), 3);
+  assert.equal(helpers.streak({ days: { [day(1)]: 2, [day(2)]: 5 } }), 2);       // not practiced yet today
+  assert.equal(helpers.streak({ days: { [day(0)]: 1, [day(2)]: 5 } }), 1);       // gap breaks the streak
+});
+
+test('mergeStats adopts the cloud copy only when it has more answers', () => {
+  const local = { a: { x: { c: 1, t: 5, r: '' } }, log: [], days: {} };
+  const bigger = { a: { x: { c: 9, t: 20, r: '' } } };            // no log/days -> normalised
+  const smaller = { a: { x: { c: 1, t: 2, r: '' } }, log: [], days: {} };
+  assert.equal(helpers.mergeStats(local, smaller), local);
+  assert.equal(helpers.mergeStats(local, null), local);
+  const m = helpers.mergeStats(local, bigger);
+  assert.equal(helpers.statsTotal(m), 20);
+  assert.equal(JSON.stringify([m.log, m.days]), '[[],{}]');
+});
+
+test('ago formats elapsed time in Hebrew', () => {
+  assert.equal(helpers.ago(10 * 1000), 'רגע');
+  assert.equal(helpers.ago(60 * 1000), 'דקה');
+  assert.equal(helpers.ago(5 * 60 * 1000), '5 דקות');
+  assert.equal(helpers.ago(3 * 3600 * 1000), '3 שעות');
+  assert.equal(helpers.ago(2 * 86400 * 1000), '2 ימים');
+});

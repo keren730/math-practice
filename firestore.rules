@@ -1,0 +1,24 @@
+rules_version = '2';
+
+// DEDICATED DATABASE: create a Firestore database with ID `math-practice`
+// (same ID as FB_DB in index.html), then in the console select that database,
+// open Rules, paste this whole file and Publish. Other databases in the
+// project have their own rules and are not affected.
+//
+// Each family has one document, families/<code>. The code is a long random
+// string kept in the child's browser and in the parent link, and acts as the
+// password: a document can be read or written only by someone who knows its
+// exact code. Listing/browsing all families and deleting are not allowed.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /families/{code} {
+      allow get: if code.matches('[a-z2-9]{20,40}');
+
+      allow create, update: if code.matches('[a-z2-9]{20,40}')
+        && request.resource.data.keys().hasOnly(['s', 'r', 'u'])
+        && request.resource.data.s is string && request.resource.data.s.size() < 100000
+        && request.resource.data.r is string && request.resource.data.r.size() < 2000
+        && request.resource.data.u is number;
+    }
+  }
+}
