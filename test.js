@@ -182,3 +182,22 @@ test('invite links carry the class code, including Hebrew codes', () => {
   for (const c of ['ד2נבו', 'abcd2345', 'כיתה4']) assert.equal(helpers.inviteFrom(helpers.inviteUrl('', c).slice(0)), c);
 });
 
+
+test('level 1 multiplication, division and word problems stay within the workbook (about 200)', () => {
+  setLV(1);
+  const nums = s => (s.match(/\d[\d,]*/g) || []).map(x => Number(x.replace(/,/g, '')));
+  for (let i = 0; i < 2000; i++) {
+    const m = GENS.qMul();
+    const [a, b] = nums(m.q.replace(/<[^>]+>/g, ' '));                       // "a × b"
+    if (b === 10 || b === 100) assert.ok(a <= 20, `round multiple: ${a} × ${b}`);
+    else assert.ok(m.answer <= 200, `qMul answer ${m.answer} above 200`);
+    const d = GENS.qDiv();
+    const [dividend] = nums(d.q.replace(/<[^>]+>/g, ' '));
+    assert.ok(dividend <= 200, `qDiv dividend ${dividend} above 200`);
+    const w = GENS.qWord();
+    const text = w.explain.replace(/<[^>]+>/g, ' ');
+    for (const [, x, y, z] of text.matchAll(/(\d[\d,]*)\s*×\s*(\d[\d,]*)\s*=\s*(\d[\d,]*)/g)) {
+      assert.ok(Number(z.replace(/,/g, '')) <= 200, `word problem multiplies to ${z}: ${text}`);
+    }
+  }
+});
