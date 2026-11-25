@@ -77,7 +77,7 @@ test('level 1 place-value generators stay within 100,000 (as in the workbook)', 
 });
 
 // ---- progress statistics (pure helpers) ----
-const helpers = vm.runInContext('({subStat, streak, statsTotal, mergeStats, dkey})', ctx);
+const helpers = vm.runInContext('({subStat, streak, statsTotal, mergeStats, dkey, esc, cleanName, CLASS_RE, weekStartOf, weekKeyOf, weekPts, memberDoc, rankBoard, tierOf})', ctx);
 const bits = (n1, n0) => '1'.repeat(n1) + '0'.repeat(n0);
 
 test('subStat: status thresholds use the last-20 window', () => {
@@ -119,4 +119,83 @@ test('pickRun: the newer copy of an unfinished practice wins', () => {
   assert.equal(pickRun(900, { u: 700, p: '{}' }), 'push');
   assert.equal(pickRun(700, { u: 700, p: '{}' }), 'none');
   assert.equal(pickRun(500, { u: 700, p: '' }), 'adopt'); // finished elsewhere -> clear local
+});
+
+test('mergeStats carries the name and level from the cloud copy', () => {
+  const local = { a: {}, log: [], days: {} };
+  const cloud = { a: { x: { c: 1, t: 9, r: '' } }, log: [], days: {}, name: 'נועה', lv: 2 };
+  const m = helpers.mergeStats(local, cloud);
+  assert.equal(m.name, 'נועה');
+  assert.equal(m.lv, 2);
+});
+
+test('esc neutralises HTML in a typed name', () => {
+  assert.equal(helpers.esc('<img src=x onerror=alert(1)>"&\''), '&lt;img src=x onerror=alert(1)&gt;&quot;&amp;&#39;');
+});
+
+test('cleanName trims, collapses spaces and limits length', () => {
+  assert.equal(helpers.cleanName('  נועה   כהן '), 'נועה כהן');
+  assert.equal(helpers.cleanName('x'.repeat(40)).length, 16);
+  assert.equal(helpers.cleanName('   '), '');
+  assert.equal(helpers.cleanName(null), '');
+});
+
+test('week starts on Sunday and weekPts sums only that week', () => {
+  const wed = new Date(2026, 10, 25);                     // Wed 25 Nov 2026
+  assert.equal(helpers.dkey(helpers.weekStartOf(wed)), '2026-11-22'); // Sunday
+  assert.equal(helpers.weekKeyOf(new Date(2026, 10, 22)), '2026-11-22');
+  assert.equal(helpers.weekKeyOf(new Date(2026, 10, 28)), '2026-11-22'); // Saturday
+  assert.equal(helpers.weekKeyOf(new Date(2026, 10, 29)), '2026-11-29'); // next Sunday
+  const st = { pts: { '2026-11-21': 50, '2026-11-22': 3, '2026-11-25': 4, '2026-11-28': 2, '2026-11-29': 9 } };
+  assert.equal(helpers.weekPts(st, wed), 9);              // 3 + 4 + 2, not the neighbours
+  assert.equal(helpers.weekPts({}, wed), 0);
+});
+
+test('memberDoc shares only a nickname and numbers, within the rules limits', () => {
+  const now = new Date(2026, 10, 25, 12);
+  const st = { name: '  נועה  ', a: { place: { c: 8, t: 10, r: '1111111100' } }, log: [], days: { '2026-11-25': 10 }, pts: { '2026-11-25': 8 }, cls: 'abcd2345', mid: 'secretmemberidsecretmemberid' };
+  const d = helpers.memberDoc(st, now);
+  assert.deepEqual(Object.keys(d).sort(), ['a', 'k', 'n', 's', 't', 'u', 'w']);
+  assert.equal(d.n, 'נועה');
+  assert.equal(d.w, 8);
+  assert.equal(d.a, 80);
+  assert.equal(d.t, 10);
+  assert.equal(d.k, '2026-11-22');
+  assert.ok(!JSON.stringify(d).includes('secretmemberid') && !JSON.stringify(d).includes('abcd2345'));
+  assert.equal(helpers.memberDoc({ a: {}, days: {} }, now).n, 'חבר');   // never an empty nickname
+  assert.ok(helpers.memberDoc({ name: 'x'.repeat(50), a: {}, days: {} }, now).n.length <= 16);
+});
+
+test('rankBoard sorts by this week only, then accuracy', () => {
+  const wk = '2026-11-22';
+  const ranked = helpers.rankBoard([
+    { id: 'a', n: 'דנה', w: 10, a: 90, k: wk },
+    { id: 'b', n: 'איתי', w: 10, a: 95, k: wk },
+    { id: 'c', n: 'גיא', w: 99, a: 99, k: '2026-11-15' },   // last week's points do not count
+    { id: 'd', n: 'מיה', w: 30, a: 70, k: wk },
+  ], wk);
+  assert.deepEqual(ranked.map(m => m.id), ['d', 'b', 'a', 'c']);
+  assert.equal(ranked[3].w, 0);
+});
+
+test('tierOf gives playful ranks with progress to the next one', () => {
+  assert.equal(helpers.tierOf(0).name, 'ניצוץ');
+  assert.equal(helpers.tierOf(14).name, 'ניצוץ');
+  assert.equal(helpers.tierOf(15).name, 'להבה');
+  assert.equal(helpers.tierOf(40).name, 'כוכב');
+  assert.equal(helpers.tierOf(80).name, 'מטאור');
+  assert.equal(helpers.tierOf(150).name, 'גלקסיה');
+  const t = helpers.tierOf(25);                           // halfway להבה -> כוכב
+  assert.equal(t.next, 'כוכב'); assert.equal(t.need, 15); assert.equal(t.pct, 40);
+  assert.equal(helpers.tierOf(1000).next, null);
+});
+
+test('class codes are 8 safe characters', () => {
+  assert.ok(helpers.CLASS_RE.test('abcd2345'));
+  for (const bad of ['abcd234', 'abcd23456', 'ABCD2345', 'abcd-234', 'abcd0145', 'abcd1l45']) assert.ok(!helpers.CLASS_RE.test(bad), bad);
+});
+
+test('mergeStats keeps class membership and weekly points from the cloud', () => {
+  const m = helpers.mergeStats({ a: {}, log: [], days: {} }, { a: { x: { c: 1, t: 9, r: '' } }, pts: { '2026-11-25': 5 }, cls: 'abcd2345', mid: 'm'.repeat(24) });
+  assert.equal(m.cls, 'abcd2345'); assert.equal(m.pts['2026-11-25'], 5); assert.equal(m.mid.length, 24);
 });

@@ -30,5 +30,25 @@ service cloud.firestore {
         && request.resource.data.p is string && request.resource.data.p.size() < 500000
         && request.resource.data.u is number;
     }
+
+    // Class board (opt-in): classes/<8-char class code>/members/<member id>.
+    // Only a nickname and weekly numbers are stored. The class code is the
+    // shared secret of the class: whoever has it can read the board.
+    match /classes/{cls}/members/{mid} {
+      allow get: if cls.matches('[a-z2-9]{8}');
+      allow list: if cls.matches('[a-z2-9]{8}') && request.query.limit <= 50;
+
+      allow create, update: if cls.matches('[a-z2-9]{8}') && mid.matches('[a-z2-9]{16,40}')
+        && request.resource.data.keys().hasOnly(['n', 'w', 'a', 's', 't', 'k', 'u'])
+        && request.resource.data.n is string && request.resource.data.n.size() >= 1 && request.resource.data.n.size() <= 16
+        && request.resource.data.w is number && request.resource.data.w >= 0 && request.resource.data.w <= 5000
+        && request.resource.data.a is number && request.resource.data.a >= 0 && request.resource.data.a <= 100
+        && request.resource.data.s is number && request.resource.data.s >= 0 && request.resource.data.s <= 400
+        && request.resource.data.t is number && request.resource.data.t >= 0 && request.resource.data.t <= 100000
+        && request.resource.data.k is string && request.resource.data.k.size() <= 12
+        && request.resource.data.u is number;
+
+      allow delete: if cls.matches('[a-z2-9]{8}') && mid.matches('[a-z2-9]{16,40}');
+    }
   }
 }
