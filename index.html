@@ -110,6 +110,32 @@ h2{font-size:23px;margin:0 0 8px}
 .pv .sep{border-left:4px solid var(--red)}.pv .hl{background:var(--hl)}
 .vert{display:inline-block;font-size:32px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;margin:4px auto}
 .vert .op{display:inline-block;width:1.3em;text-align:left;color:var(--red)}.vert .ln{border-top:3px solid var(--ink);margin-top:4px}.vert .qm{color:var(--red)}
+details.me{margin:0 4px 30px;background:#fff;border:1.5px solid var(--ink);border-radius:4px}
+.me summary{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:14px 18px;cursor:pointer;list-style:none;font-family:"Secular One",Assistant,sans-serif;font-size:21px}
+.me summary::-webkit-details-marker{display:none}
+.me summary::after{content:"פתיחה ▾";font-family:Assistant,sans-serif;font-size:14px;font-weight:700;color:var(--ink2);margin-right:auto}
+.me[open] summary::after{content:"סגירה ▴"}
+.me summary .mk{background:linear-gradient(transparent 58%,#f3cfc9 58%)}
+.me summary .sum{font-family:Assistant,sans-serif;font-size:15px;color:var(--ink2);font-weight:600}
+.me>*:not(summary){margin-right:18px;margin-left:18px}
+.me>.stats{margin-top:4px}.me>*:last-child{margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;border-top:1.5px dashed var(--line);padding-top:14px}
+.stats div{text-align:center}.stats b{display:block;font-family:"Secular One",Assistant,sans-serif;font-weight:400;font-size:30px;line-height:1.1;color:var(--red)}.stats small{color:var(--ink2);font-size:14px;font-weight:700}
+.fbtext{margin:14px 0 10px;line-height:1.7}
+.prows{display:flex;flex-direction:column;margin-top:14px}
+.prow{font-family:inherit;display:grid;grid-template-columns:minmax(120px,1.6fr) 1fr 44px 96px;gap:10px;align-items:center;text-align:right;background:none;border:0;border-top:1.5px dashed var(--line);padding:9px 2px;cursor:pointer;color:var(--ink);font-size:16px}
+.prow:hover{background:#fff6cf}
+.pbar{height:10px;background:var(--line);border-radius:1px;overflow:hidden}.pbar i{display:block;height:100%;background:var(--ink)}
+.prow.strong .pbar i{background:var(--ok)}.prow.weak .pbar i{background:var(--red)}
+.pp{font-weight:800;text-align:center}.ps{font-size:14px;font-weight:700;color:var(--ink2)}
+.prow.strong .ps{color:var(--ok)}.prow.weak .ps{color:var(--red)}
+.me h3{margin:18px 18px 6px;font-size:18px}
+.plog>div{display:grid;grid-template-columns:52px 1fr auto;gap:10px;border-top:1.5px dashed var(--line);padding:7px 2px;font-size:16px}
+.plog span:first-child{color:var(--ink2);font-weight:700}
+.pnote{margin:16px 18px 0;font-size:14px;color:var(--ink2)}.pnote .link{font-size:14px}
+.resume{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:#fff6cf;border:1.5px solid var(--ink);border-radius:4px;padding:14px 18px;margin:0 4px 18px}
+.resume .ra{display:flex;gap:14px;align-items:center}
+@media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr);row-gap:12px}.prow{grid-template-columns:1fr 70px 40px;row-gap:2px}.prow .pn{grid-column:1/-1}.prow .ps{grid-column:1/-1;margin-top:-2px}}
 @media(max-width:520px){#app{padding:14px 22px 60px 8px}#app::before{right:8px}h1{font-size:29px}.qtext{font-size:20px}.card{padding:16px}.hero{padding:14px 16px 16px}.subs{grid-template-columns:1fr}.pv th{font-size:11px;min-width:40px;padding:4px 2px}.pv td{font-size:22px;min-width:40px;height:44px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -701,24 +727,74 @@ try{BEST=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){BEST={}}
 function saveBest(id,p){try{if(!(BEST[id]>=p)){BEST[id]=p;localStorage.setItem(KEY,JSON.stringify(BEST))}}catch(e){}}
 try{LV=Number(localStorage.getItem(KEY+'-lv'))===2?2:1}catch(e){}
 let S=null;
+/* ===== שמירת התקדמות (בדפדפן בלבד) ===== */
+const SK=KEY+'-stats',RK=KEY+'-run';
+let ST={a:{},log:[],days:{}};
+try{const x=JSON.parse(localStorage.getItem(SK)||'null');if(x&&x.a)ST={a:x.a,log:x.log||[],days:x.days||{}}}catch(e){}
+const saveST=()=>{try{localStorage.setItem(SK,JSON.stringify(ST))}catch(e){}};
+const dkey=d=>d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+function rec(sub,ok){ /* תוצאה של שאלה אחת, לפי תת-נושא (חלון של 20 האחרונות) */
+  if(!sub)return;const a=ST.a[sub]||(ST.a[sub]={c:0,t:0,r:''});a.t++;if(ok)a.c++;a.r=((a.r||'')+(ok?'1':'0')).slice(-20);
+  const k=dkey(new Date());ST.days[k]=(ST.days[k]||0)+1;saveST();
+}
+function logSession(){ST.log.push({t:Date.now(),id:S.id,title:S.title,lv:LV,s:S.score,n:S.qs.length});ST.log=ST.log.slice(-60);saveST()}
+function subStat(id){
+  const a=ST.a[id],r=(a&&a.r)||'',n=r.length,acc=n?Math.round(r.split('').filter(x=>x==='1').length/n*100):0;
+  return {n,acc,t:a?a.t:0,c:a?a.c:0,status:n<5?'new':acc>=85&&n>=10?'strong':acc>=70?'ok':'weak'};
+}
+function streak(){const d=new Date();if(!ST.days[dkey(d)])d.setDate(d.getDate()-1);let n=0;while(ST.days[dkey(d)]){n++;d.setDate(d.getDate()-1)}return n}
+const subGens=s=>s.gens.map(f=>()=>{const q=f();q.sub=s.id;return q});
+function gensFor(id){const s=ALLSUBS.find(x=>x.id===id);if(s)return subGens(s);const t=TOPICS.find(x=>'t_'+x.id===id);return t?t.subs.flatMap(subGens):[]}
+function saveRun(ans){try{localStorage.setItem(RK,JSON.stringify({title:S.title,id:S.id,exact:S.exact,retry:S.retry,qs:S.qs,i:S.i,score:S.score,wrong:S.wrong,ans:!!ans}))}catch(e){}}
+const clearRun=()=>{try{localStorage.removeItem(RK)}catch(e){}};
+function loadRun(){try{const r=JSON.parse(localStorage.getItem(RK)||'null');return r&&r.qs&&r.qs.length&&r.i<r.qs.length?r:null}catch(e){return null}}
+function resume(){
+  const r=loadRun();if(!r)return home();S={...r,gens:gensFor(r.id),done:false};
+  if(r.ans){if(r.i<r.qs.length-1){S.i=r.i+1;show()}else finish()}else show();
+}
+const STATUS={strong:'חזק',ok:'בדרך',weak:'כדאי לתרגל',new:'עוד לא תרגלתם'};
+function progress(){
+  const rows=ALLSUBS.map(s=>({s,...subStat(s.id)}));
+  const total=rows.reduce((a,r)=>a+r.t,0),corr=rows.reduce((a,r)=>a+r.c,0),acc=total?Math.round(corr/total*100):0;
+  const strong=rows.filter(r=>r.status==='strong'),weak=rows.filter(r=>r.status==='weak').sort((a,b)=>a.acc-b.acc),fresh=rows.filter(r=>r.status==='new');
+  let fb;
+  if(total<10)fb='התחלה טובה! אחרי עוד קצת תרגול תופיע כאן תמונה ברורה של מה חזק ומה כדאי לחזק.';
+  else{fb=`ענו נכון על ${acc}% מתוך ${total} שאלות. `;
+    if(strong.length)fb+=`נושאים חזקים: ${strong.slice(0,3).map(r=>r.s.title).join(', ')}. `;
+    if(weak.length)fb+=`כדאי לחזור על: ${weak.slice(0,3).map(r=>r.s.title).join(', ')}.`;
+    else if(fresh.length)fb+=`עוד לא תרגלו: ${fresh.slice(0,3).map(r=>r.s.title).join(', ')}.`;
+    else fb+='אין כרגע נושא חלש. כל הכבוד!'}
+  const sum=total?`${total} שאלות · ${acc}% נכון · ${strong.length} מתוך ${rows.length} נושאים חזקים`:'עוד לא התחלתם';
+  const html=`<div class="stats"><div><b>${total}</b><small>שאלות שנענו</small></div><div><b>${total?acc+'%':'—'}</b><small>תשובות נכונות</small></div><div><b>${strong.length}/${rows.length}</b><small>נושאים חזקים</small></div><div><b>${streak()}</b><small>ימים ברצף</small></div></div>
+   <p class="fbtext">${fb}</p>${weak.length?`<button class="btn" data-sub="${weak[0].s.id}">לתרגל: ${weak[0].s.title}</button>`:''}
+   <div class="prows">${rows.map(r=>`<button class="prow ${r.status}" data-sub="${r.s.id}"><span class="pn">${r.s.title}</span><span class="pbar"><i style="width:${r.status==='new'?0:r.acc}%"></i></span><span class="pp">${r.status==='new'?'—':r.acc+'%'}</span><span class="ps">${r.status==='new'&&r.n?'עוד קצת תרגול':STATUS[r.status]}</span></button>`).join('')}</div>
+   ${ST.log.length?`<h3>תרגולים אחרונים</h3><div class="plog">${ST.log.slice(-6).reverse().map(l=>{const d=new Date(l.t);return `<div><span>${d.getDate()}.${d.getMonth()+1}</span><span>${l.title}${l.lv===2?' (אתגר)':''}</span><b>${l.s}/${l.n}</b></div>`}).join('')}</div>`:''}
+   <p class="pnote">ההתקדמות נשמרת במכשיר הזה, בדפדפן הזה. <button class="link" data-reset="1">איפוס ההתקדמות</button></p>`;
+  return {sum,html};
+}
 
 function mockGens(){ /* QM שאלות: חלוקה שווה בין תתי-הנושאים, והעודף מתחלק באקראי */
   const base=Math.floor(QM/ALLSUBS.length),extra=new Set(shuffle(ALLSUBS.map((_,i)=>i)).slice(0,QM-base*ALLSUBS.length));
-  return shuffle(ALLSUBS.flatMap((s,i)=>Array.from({length:base+(extra.has(i)?1:0)},()=>pick(s.gens))));
+  return shuffle(ALLSUBS.flatMap((s,i)=>Array.from({length:base+(extra.has(i)?1:0)},()=>pick(subGens(s)))));
 }
 function daysLeft(){const t=new Date(2026,11,2),n=new Date();const a=new Date(n.getFullYear(),n.getMonth(),n.getDate());return Math.round((t-a)/86400000)}
 function home(){
-  const d=daysLeft();
+  const d=daysLeft(),run=loadRun(),pg=progress();
   const cnt=d>1?`נשארו ${d} ימים למבדק`:d===1?'המבדק מחר! בהצלחה':d===0?'המבדק היום! בהצלחה, אתם מוכנים':'';
   app.innerHTML=`<header class="hero"><div class="kicker">מחברת חשבון · כיתה ד׳</div><h1>תרגול למבדק אמצע</h1><p>שאלות חדשות בכל פעם, לפי כל נושאי המבדק.</p>${cnt?`<div class="count">${cnt}${d>1?' · יום רביעי, 2.12':''}</div>`:''}</header>
+  ${run?`<div class="resume"><div><b>יש תרגול שלא סיימתם</b><div>${run.title} · שאלה ${Math.min(run.ans?run.i+2:run.i+1,run.qs.length)} מתוך ${run.qs.length}</div></div><div class="ra"><button class="btn" data-resume="1">להמשיך</button><button class="link" data-discard="1">ביטול התרגול</button></div></div>`:''}
   <div class="lvl"><span class="lbl2">רמת קושי</span><div class="seg" role="group" aria-label="רמת קושי"><button class="${LV===1?'on':''}" data-lv="1">כמו בחוברת</button><button class="${LV===2?'on':''}" data-lv="2">אתגר</button></div><span class="hint">${LV===1?'ברמה של התרגילים בחוברת':'קצת יותר קשה מהחוברת'}</span></div>
   <div class="mix"><div><h2>מבדק דמה</h2><div>${QM} שאלות מכל הנושאים, כמו במבדק האמיתי</div></div><button class="btn light big" data-mock="1">מתחילים</button></div>
   <p class="tip"><b>טיפ:</b> מומלץ להתחיל ממה שנראה קשה. אחרי כל שאלה מקבלים הסבר, גם כשצדקתם.</p>
+  <details class="me"><summary><span class="mk">ההתקדמות שלי</span><span class="sum">${pg.sum}</span></summary>${pg.html}</details>
   ${TOPICS.map((t,ti)=>`<section class="topic" style="--tc:${t.color};--tcl:${t.color}38"><header><h2><span class="tn">${ti+1}</span><span class="mk">${t.title}</span></h2><button class="link" data-topic="${t.id}">תרגול מעורב בנושא</button></header>
    <div class="subs">${t.subs.map(s=>{const b=BEST[s.id+(LV===2?'_h':'')];return `<button class="subbtn" data-sub="${s.id}"><span class="st"><b>${s.title}</b><small>${s.pages}</small></span>${b!=null?`<span class="best" title="השיא שלכם">${b}</span>`:''}</button>`}).join('')}</div></section>`).join('')}`;
   app.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{LV=Number(b.dataset.lv);try{localStorage.setItem(KEY+'-lv',LV)}catch(e){}home()});
-  app.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{const s=ALLSUBS.find(x=>x.id===b.dataset.sub);start(s.title,s.gens,QN,s.id)});
-  app.querySelectorAll('[data-topic]').forEach(b=>b.onclick=()=>{const t=TOPICS.find(x=>x.id===b.dataset.topic);start(t.title+' – תרגול מעורב',t.subs.flatMap(s=>s.gens),QN,'t_'+t.id)});
+  app.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{const s=ALLSUBS.find(x=>x.id===b.dataset.sub);start(s.title,subGens(s),QN,s.id)});
+  app.querySelectorAll('[data-topic]').forEach(b=>b.onclick=()=>{const t=TOPICS.find(x=>x.id===b.dataset.topic);start(t.title+' – תרגול מעורב',t.subs.flatMap(subGens),QN,'t_'+t.id)});
+  const rs=app.querySelector('[data-resume]');if(rs)rs.onclick=resume;
+  const dc=app.querySelector('[data-discard]');if(dc)dc.onclick=()=>{clearRun();home()};
+  const rz=app.querySelector('[data-reset]');if(rz)rz.onclick=()=>{if(confirm('למחוק את כל ההתקדמות והשיאים?')){ST={a:{},log:[],days:{}};BEST={};try{localStorage.removeItem(SK);localStorage.removeItem(KEY);localStorage.removeItem(RK)}catch(e){}home()}};
   app.querySelector('[data-mock]').onclick=()=>{
     const fs=mockGens();start('מבדק דמה',fs,fs.length,'mock',true)};
   window.scrollTo(0,0);
@@ -731,7 +807,7 @@ function build(gens,n,exact){
 }
 function start(title,gens,n,id,exact){S={title,gens,id,qs:build(gens,n,exact),i:0,score:0,wrong:[],done:false,exact:!!exact};show()}
 function show(){
-  const q=S.qs[S.i],n=S.qs.length;S.done=false;
+  const q=S.qs[S.i],n=S.qs.length;S.done=false;saveRun();
   app.innerHTML=`<div class="top"><button class="back" id="exit">→ חזרה לתפריט</button><div class="prog" aria-hidden="true">${Array.from({length:n},(_,k)=>`<i class="${k<S.i?'on':k===S.i?'cur':''}"></i>`).join('')}</div><span class="cnt">${S.i+1} מתוך ${n}</span></div>
   <div class="card"><div class="qhead"><span class="qn">${S.i+1}</span><span>${S.title}</span></div>${q.svg?`<div class="figwrap">${q.svg}</div>`:''}<div class="qtext">${q.q}</div>
   <div id="ans">${q.type==='num'?`<div class="numrow"><input id="in" type="text" inputmode="numeric" autocomplete="off" aria-label="התשובה שלכם" placeholder="התשובה"><span class="unit">${q.unit}</span><button class="btn" id="chk">בדיקה</button></div>`
@@ -746,6 +822,8 @@ function show(){
 function answer(ok,val){
   if(S.done)return;S.done=true;const q=S.qs[S.i];
   if(ok)S.score++;else S.wrong.push(q);
+  if(!S.retry)rec(q.sub,ok);
+  saveRun(true);
   let corr;
   if(q.type==='num'){const inp=document.getElementById('in');inp.disabled=true;inp.classList.add(ok?'right':'wrong');document.getElementById('chk').disabled=true;corr=`<span class="eq">${fmt(q.answer)}</span> ${q.unit}`}
   else{document.querySelectorAll('.opt').forEach((b,i)=>{b.disabled=true;if(q.options[i].ok)b.classList.add('right');else if(i===val)b.classList.add('wrong')});corr=q.options.find(o=>o.ok).h}
@@ -758,6 +836,8 @@ function next(){if(S.i<S.qs.length-1){S.i++;show()}else finish()}
 function finish(){
   const n=S.qs.length,p=Math.round(S.score/n*100);const stars=p>=90?3:p>=70?2:p>=50?1:0;
   if(S.id&&!S.retry)saveBest(S.id+(LV===2?'_h':''),p);
+  if(!S.retry)logSession();
+  clearRun();
   const msg=p>=90?'מדהים! אתם מוכנים למבדק':p>=70?'עבודה טובה! עוד קצת תרגול והכול יושב':p>=50?'התחלה טובה. כדאי לחזור על ההסברים ולנסות שוב':'לא נורא, כל תרגול מקדם. נסו שוב אחרי שתקראו את ההסברים';
   app.innerHTML=`<div class="card result"><h1>סיימתם!</h1><div class="stars" aria-label="${stars} כוכבים מתוך 3">${'★'.repeat(stars)}<span>${'★'.repeat(3-stars)}</span></div><div class="grade"><b>${S.score}</b><small>מתוך ${n}</small></div><p>${msg}</p>
   <div class="actions">${S.wrong.length?`<button class="btn big" id="rw">לתרגל שוב את הטעויות (${S.wrong.length})</button>`:''}<button class="btn big alt" id="again">סבב חדש</button><button class="btn big alt" id="hm">לתפריט</button></div>
