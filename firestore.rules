@@ -1,35 +1,11 @@
 rules_version = '2';
 
-// DEDICATED DATABASE: create a Firestore database with ID `math-practice`
-// (same ID as FB_DB in index.html), then in the console select that database,
-// open Rules, paste this whole file and Publish. Other databases in the
-// project have their own rules and are not affected.
+// Firebase console -> Firestore Database -> database `math-practice` -> Rules -> Publish.
 //
-// Each family has one document, families/<code>. The code is a long random
-// string kept in the child's browser and in the child's link, and acts as the
-// password: a document can be read or written only by someone who knows its
-// exact code. Listing/browsing all families and deleting are not allowed.
+// The database is used only by the opt-in class board. Progress is kept on
+// each device and is not stored here.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /families/{code} {
-      allow get: if code.matches('[a-z2-9]{20,40}');
-
-      allow create, update: if code.matches('[a-z2-9]{20,40}')
-        && request.resource.data.keys().hasOnly(['s', 'r', 'u'])
-        && request.resource.data.s is string && request.resource.data.s.size() < 100000
-        && request.resource.data.r is string && request.resource.data.r.size() < 2000
-        && request.resource.data.u is number;
-    }
-
-    // The child's unfinished practice, so it can be resumed on any device.
-    match /runs/{code} {
-      allow get: if code.matches('[a-z2-9]{20,40}');
-
-      allow create, update: if code.matches('[a-z2-9]{20,40}')
-        && request.resource.data.keys().hasOnly(['p', 'u'])
-        && request.resource.data.p is string && request.resource.data.p.size() < 500000
-        && request.resource.data.u is number;
-    }
 
     // Class board (opt-in): classes/<class code>/members/<member id>.
     // A class code is 4-20 Hebrew letters, lowercase Latin letters or digits.

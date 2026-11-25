@@ -77,7 +77,7 @@ test('level 1 place-value generators stay within 100,000 (as in the workbook)', 
 });
 
 // ---- progress statistics (pure helpers) ----
-const helpers = vm.runInContext('({subStat, streak, statsTotal, mergeStats, dkey, esc, cleanName, CLASS_RE, normClass, familyFrom, inviteFrom, inviteUrl, weekStartOf, weekKeyOf, weekPts, memberDoc, rankBoard, tierOf})', ctx);
+const helpers = vm.runInContext('({subStat, streak, dkey, esc, cleanName, CLASS_RE, normClass, inviteFrom, inviteUrl, weekStartOf, weekKeyOf, weekPts, memberDoc, rankBoard, tierOf})', ctx);
 const bits = (n1, n0) => '1'.repeat(n1) + '0'.repeat(n0);
 
 test('subStat: status thresholds use the last-20 window', () => {
@@ -96,37 +96,6 @@ test('streak counts consecutive days ending today or yesterday', () => {
   assert.equal(helpers.streak({ days: { [day(0)]: 3, [day(1)]: 2, [day(2)]: 5 } }), 3);
   assert.equal(helpers.streak({ days: { [day(1)]: 2, [day(2)]: 5 } }), 2);       // not practiced yet today
   assert.equal(helpers.streak({ days: { [day(0)]: 1, [day(2)]: 5 } }), 1);       // gap breaks the streak
-});
-
-test('mergeStats adopts the cloud copy only when it has more answers', () => {
-  const local = { a: { x: { c: 1, t: 5, r: '' } }, log: [], days: {} };
-  const bigger = { a: { x: { c: 9, t: 20, r: '' } } };            // no log/days -> normalised
-  const smaller = { a: { x: { c: 1, t: 2, r: '' } }, log: [], days: {} };
-  assert.equal(helpers.mergeStats(local, smaller), local);
-  assert.equal(helpers.mergeStats(local, null), local);
-  const m = helpers.mergeStats(local, bigger);
-  assert.equal(helpers.statsTotal(m), 20);
-  assert.equal(JSON.stringify([m.log, m.days]), '[[],{}]');
-});
-
-
-test('pickRun: the newer copy of an unfinished practice wins', () => {
-  const { pickRun } = vm.runInContext('({pickRun})', ctx);
-  assert.equal(pickRun(0, null), 'none');                 // nothing anywhere
-  assert.equal(pickRun(500, null), 'push');               // only local -> upload
-  assert.equal(pickRun(0, { u: 700, p: '{}' }), 'adopt');  // only cloud -> download
-  assert.equal(pickRun(500, { u: 700, p: '{}' }), 'adopt');
-  assert.equal(pickRun(900, { u: 700, p: '{}' }), 'push');
-  assert.equal(pickRun(700, { u: 700, p: '{}' }), 'none');
-  assert.equal(pickRun(500, { u: 700, p: '' }), 'adopt'); // finished elsewhere -> clear local
-});
-
-test('mergeStats carries the name and level from the cloud copy', () => {
-  const local = { a: {}, log: [], days: {} };
-  const cloud = { a: { x: { c: 1, t: 9, r: '' } }, log: [], days: {}, name: 'נועה', lv: 2 };
-  const m = helpers.mergeStats(local, cloud);
-  assert.equal(m.name, 'נועה');
-  assert.equal(m.lv, 2);
 });
 
 test('esc neutralises HTML in a typed name', () => {
@@ -203,11 +172,6 @@ test('normClass makes typed and pasted codes comparable', () => {
   assert.ok(helpers.CLASS_RE.test(helpers.normClass('78ff-S4UJ')));
 });
 
-test('mergeStats keeps class membership and weekly points from the cloud', () => {
-  const m = helpers.mergeStats({ a: {}, log: [], days: {} }, { a: { x: { c: 1, t: 9, r: '' } }, pts: { '2026-11-25': 5 }, cls: 'abcd2345', mid: 'm'.repeat(24) });
-  assert.equal(m.cls, 'abcd2345'); assert.equal(m.pts['2026-11-25'], 5); assert.equal(m.mid.length, 24);
-});
-
 test('invite links carry the class code, including Hebrew codes', () => {
   assert.equal(helpers.inviteUrl('https://x.test/app/', 'ד2נבו'), 'https://x.test/app/?class=%D7%932%D7%A0%D7%91%D7%95');
   assert.equal(helpers.inviteFrom('?class=%D7%932%D7%A0%D7%91%D7%95'), 'ד2נבו');   // round trip
@@ -218,31 +182,3 @@ test('invite links carry the class code, including Hebrew codes', () => {
   for (const c of ['ד2נבו', 'abcd2345', 'כיתה4']) assert.equal(helpers.inviteFrom(helpers.inviteUrl('', c).slice(0)), c);
 });
 
-test('mergeStats restores identity from the cloud even when it has no answers', () => {
-  const cloud = { a: {}, log: [], days: {}, name: 'דנה', lv: 2, cls: 'ד2נבו', mid: 'm'.repeat(24) };
-  const m = helpers.mergeStats({ a: {}, log: [], days: {} }, cloud);          // fresh device, nothing answered anywhere
-  assert.equal(m.name, 'דנה'); assert.equal(m.lv, 2); assert.equal(m.cls, 'ד2נבו'); assert.equal(m.mid.length, 24);
-});
-
-test('mergeStats never replaces richer local progress, but fills missing identity', () => {
-  const local = { a: { place: { c: 5, t: 9, r: '' } }, log: [], days: {}, name: 'נועה' };
-  const cloud = { a: { place: { c: 1, t: 2, r: '' } }, log: [], days: {}, name: 'דנה', cls: 'abcd2345', mid: 'm'.repeat(24) };
-  const m = helpers.mergeStats(local, cloud);
-  assert.equal(helpers.statsTotal(m), 9);          // local answers kept
-  assert.equal(m.name, 'נועה');                    // local name kept
-  assert.equal(m.cls, 'abcd2345');                 // missing class filled from the cloud
-  assert.equal(helpers.mergeStats(local, null), local);
-  const same = { a: { place: { c: 5, t: 9, r: '' } }, log: [], days: {}, name: 'נועה', cls: 'x', mid: 'y' };
-  assert.equal(helpers.mergeStats(same, { a: {}, name: 'ללא', cls: 'z', mid: 'w' }), same); // nothing to fill -> same object
-});
-
-test('familyFrom reads the personal code from a pasted link, not the invite code', () => {
-  const code = 'abcdefghjkmnpqrstuvwxyz2';
-  assert.equal(helpers.familyFrom('https://keren730.github.io/math-practice/?family=' + code), code);
-  assert.equal(helpers.familyFrom('  https://x.test/?family=' + code.toUpperCase() + '&class=%D7%93  '), code);
-  assert.equal(helpers.familyFrom(code), code);                                   // the bare code works too
-  assert.equal(helpers.familyFrom('https://x.test/?class=%D7%932%D7%A0%D7%91%D7%95'), '');   // an invite link is not a personal link
-  assert.equal(helpers.familyFrom('?family=short'), '');
-  assert.equal(helpers.familyFrom(''), '');
-  assert.equal(helpers.familyFrom(null), '');
-});
