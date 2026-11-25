@@ -837,7 +837,7 @@ function progress(st=ST,ro=false){
    <p class="fbtext">${fb}</p>${weak.length&&!ro?`<button class="btn" data-sub="${weak[0].s.id}">לתרגל: ${weak[0].s.title}</button>`:''}
    <div class="prows">${rows.map(r=>`<${ro?'div':'button'} class="prow ${r.status}"${ro?'':` data-sub="${r.s.id}"`}><span class="pn">${r.s.title}</span><span class="pbar"><i style="width:${r.status==='new'?0:r.acc}%"></i></span><span class="pp">${r.status==='new'?'—':r.acc+'%'}</span><span class="ps">${r.status==='new'&&r.n?'עוד קצת תרגול':STATUS[r.status]}</span></${ro?'div':'button'}>`).join('')}</div>
    ${st.log.length?`<h3>תרגולים אחרונים</h3><div class="plog">${st.log.slice(-6).reverse().map(l=>{const d=new Date(l.t);return `<div><span>${d.getDate()}.${d.getMonth()+1}</span><span>${l.title}${l.lv===2?' (אתגר)':''}</span><b>${l.s}/${l.n}</b></div>`}).join('')}</div>`:''}
-   ${ro?'':shareHtml()+`<p class="pnote">${CLOUD_ON()?'ההתקדמות נשמרת גם בענן, כדי שאפשר לצפות בה מרחוק.':'ההתקדמות נשמרת במכשיר הזה, בדפדפן הזה.'} <button class="link" data-reset="1">איפוס ההתקדמות</button></p>`}`;
+   ${ro?'':shareHtml()+`<p class="pnote">${CLOUD_ON()?'':'ההתקדמות נשמרת במכשיר הזה, בדפדפן הזה. '}<button class="link" data-reset="1">איפוס ההתקדמות</button></p>`}`;
   return {sum,html};
 }
 
