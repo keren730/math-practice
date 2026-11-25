@@ -38,6 +38,13 @@ button{font-family:inherit;color:inherit}
 .iconbtn{flex:none;width:42px;height:42px;border:1.5px solid var(--ink);border-radius:50%;background:#fff;font-size:20px;line-height:1;cursor:pointer;color:var(--ink)}
 .mk{background:linear-gradient(transparent 58%,var(--tcl,#f3cfc9) 58%);padding:0 4px}
 .chip{display:flex;flex-direction:column;align-items:flex-start;gap:0;background:var(--hl);border:1.5px solid var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer;box-shadow:0 3px 0 var(--ink);text-align:right}
+.chip .code{unicode-bidi:plaintext}
+.invitecard{width:100%;max-width:400px;background:var(--hl);border:1.5px solid var(--ink);border-radius:10px;padding:10px 14px;box-shadow:0 4px 0 var(--ink);text-align:center}
+.invitecard b{display:block;font-family:"Secular One",Assistant,sans-serif;font-weight:400;font-size:19px}
+.invitecard .code{display:inline-block;margin:4px 0;padding:2px 14px;background:#fff;border:1.5px solid var(--ink);border-radius:6px;font-size:24px;font-weight:800;unicode-bidi:plaintext}
+.invitecard small{display:block;font-size:13px;line-height:1.4;color:#4a4320}
+.invite{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1.5px dashed var(--ink);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-weight:800}
+.invite .btn{padding:7px 16px;font-size:16px}
 .chip b{font-size:16px;line-height:1.2}.chip span{font-size:13px;font-weight:700;color:#4a4320}
 .chip:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
 .nav{display:flex;flex:none;border-top:1.5px solid var(--ink);background:#fff;padding-bottom:env(safe-area-inset-bottom)}
@@ -788,16 +795,21 @@ function subStat(id,st){
 }
 function streak(st){const d=new Date();if(!st.days[dkey(d)])d.setDate(d.getDate()-1);let n=0;while(st.days[dkey(d)]){n++;d.setDate(d.getDate()-1)}return n}
 const statsTotal=st=>Object.values((st&&st.a)||{}).reduce((n,x)=>n+(x.t||0),0);
-function mergeStats(local,cloud){ /* אחרי טעינה: מאמצים את הענן רק אם יש בו יותר שאלות */
-  if(cloud&&cloud.a&&statsTotal(cloud)>statsTotal(local))return {a:cloud.a,log:cloud.log||[],days:cloud.days||{},name:cloud.name||local.name,lv:cloud.lv||local.lv,pts:cloud.pts||local.pts,cls:cloud.cls||local.cls,mid:cloud.mid||local.mid};
-  return local;
+function mergeStats(local,cloud){ /* אחרי טעינה: את הציונים מאמצים מהענן רק אם יש בו יותר שאלות; את הזהות (שם, רמה, כיתה) תמיד משחזרים */
+  if(!cloud||!cloud.a)return local;
+  if(statsTotal(cloud)>statsTotal(local))return {a:cloud.a,log:cloud.log||[],days:cloud.days||{},pts:cloud.pts||local.pts,name:cloud.name||local.name,lv:cloud.lv||local.lv,cls:cloud.cls||local.cls,mid:cloud.mid||local.mid};
+  const id={name:local.name||cloud.name,lv:local.lv||cloud.lv,cls:local.cls||cloud.cls,mid:local.mid||cloud.mid};
+  return (id.name===local.name&&id.lv===local.lv&&id.cls===local.cls&&id.mid===local.mid)?local:{...local,...id};
 }
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cleanName=v=>String(v||'').replace(/\s+/g,' ').trim().slice(0,16);
 /* ===== לוח כיתה: נקודות שבועיות, דרגות ודירוג (פונקציות טהורות) ===== */
-const CLASS_RE=/^[a-z2-9]{8}$/;
+const CLASS_RE=/^[a-z0-9\u05d0-\u05ea]{4,20}$/; /* אותיות עבריות, אותיות לטיניות וספרות */
+const normClass=v=>String(v||'').toLowerCase().replace(/[^a-z0-9\u05d0-\u05ea]/g,'');
 const weekStartOf=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay()); /* השבוע מתחיל ביום ראשון */
 const weekKeyOf=d=>dkey(weekStartOf(d));
+const inviteFrom=q=>{const c=normClass(new URLSearchParams(q).get('class')||'');return CLASS_RE.test(c)?c:''}; /* קוד כיתה מקישור הזמנה */
+const inviteUrl=(base,cls)=>base+'?class='+encodeURIComponent(cls);
 function weekPts(st,now=new Date()){const w=weekStartOf(now);let n=0;for(let i=0;i<7;i++)n+=((st&&st.pts)||{})[dkey(new Date(w.getFullYear(),w.getMonth(),w.getDate()+i))]||0;return n}
 function memberDoc(st,now=new Date()){ /* מה משותף עם הכיתה: כינוי ומספרים בלבד */
   const rows=ALLSUBS.map(x=>subStat(x.id,st)),t=rows.reduce((a,r)=>a+r.t,0),c=rows.reduce((a,r)=>a+r.c,0);
@@ -849,7 +861,7 @@ const FKEY=KEY+'-family',CODE_RE=/^[a-z2-9]{20,40}$/;
 function newCode(){const al='abcdefghjkmnpqrstuvwxyz23456789',b=new Uint8Array(24);crypto.getRandomValues(b);return Array.from(b,x=>al[x%al.length]).join('')}
 const JOIN=(c=>CODE_RE.test(c)?c:'')((new URLSearchParams(location.search).get('family')||'').trim().toLowerCase());
 let FAM='';try{if(JOIN)localStorage.setItem(FKEY,JOIN);FAM=localStorage.getItem(FKEY)||'';if(!CODE_RE.test(FAM)){FAM=newCode();localStorage.setItem(FKEY,FAM)}}catch(e){FAM=''}
-let FS=null,SYNC='wait',cloudTimer=null;
+let FS=null,SYNC='wait',cloudTimer=null,SYNCED=false,syncTries=0; /* SYNCED: אסור לכתוב לענן לפני שקראנו ממנו */
 async function fs(){
   if(FS)return FS;if(!CLOUD_ON())return null;
   try{const V='10.12.2',[a,f]=await Promise.all([import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`)]);
@@ -857,14 +869,14 @@ async function fs(){
 }
 function setSync(v){SYNC=v;document.querySelectorAll('.syncnote').forEach(el=>el.textContent=v==='ok'?'מסונכרן לענן ✓':v==='err'?'לא מצליח להתחבר לענן כרגע':'ממתין לסנכרון')}
 function cloudPush(now){
-  if(!FAM||!CLOUD_ON())return;
+  if(!FAM||!CLOUD_ON()||!SYNCED)return;
   clearTimeout(cloudTimer);
   cloudTimer=setTimeout(async()=>{const f=await fs();if(!f)return setSync('err');
     try{await f.setDoc(f.doc(f.db,'families',FAM),{s:JSON.stringify(ST),r:'null',u:Date.now()});setSync('ok')}catch(e){setSync('err')}},now?0:1500);
 }
 let runTimer=null;
 function cloudRunPush(now){ /* התרגול הלא-גמור נשמר בענן, כדי להמשיך ממנו מכל מכשיר */
-  if(!FAM||!CLOUD_ON())return;
+  if(!FAM||!CLOUD_ON()||!SYNCED)return;
   clearTimeout(runTimer);
   runTimer=setTimeout(async()=>{const f=await fs();if(!f)return;
     try{const r=loadRun(),p=r?JSON.stringify(r):'';if(p.length>480000)return;
@@ -874,7 +886,7 @@ async function cloudSync(){
   if(!FAM||!CLOUD_ON())return;const f=await fs();if(!f)return setSync('err');
   try{const snap=await f.getDoc(f.doc(f.db,'families',FAM));
     if(snap.exists()){const m=mergeStats(ST,JSON.parse(snap.data().s||'null'));if(m!==ST){ST=m;if(ST.lv){LV=ST.lv===2?2:1;try{localStorage.setItem(KEY+'-lv',LV)}catch(e){}}try{localStorage.setItem(SK,JSON.stringify(ST))}catch(e){}refresh()}}
-    cloudPush(true);classPush(true)}catch(e){setSync('err')}
+    SYNCED=true;cloudPush(true);classPush(true)}catch(e){setSync('err');if(syncTries++<4)setTimeout(cloudSync,4000)}
   try{ /* תרגול לא-גמור: הגרסה העדכנית יותר מנצחת */
     const rs=await f.getDoc(f.doc(f.db,'runs',FAM)),loc=loadRun(),cloud=rs.exists()?rs.data():null,act=pickRun(loc?loc.ts||0:0,cloud);
     if(act==='adopt'&&canRefresh()){try{cloud.p?localStorage.setItem(RK,cloud.p):localStorage.removeItem(RK)}catch(e){}refresh()}
@@ -924,7 +936,9 @@ const MASCOT=`<svg class="mascot" viewBox="0 0 120 160" aria-hidden="true"><rect
 const LVICON={1:'<svg viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z" fill="#ffd24a" stroke="#1b2b5e" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 7l3 3" stroke="#1b2b5e" stroke-width="1.6"/></svg>',2:'<svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z" fill="#ffe27a" stroke="#1b2b5e" stroke-width="1.6" stroke-linejoin="round"/></svg>'};
 let SCREEN='',SARG=null;
 const TABS=['menu','progress','class','me','topic'];
-function hist(mode,state){try{history[mode+'State'](state,'',CLOUD_ON()&&FAM?location.pathname+'?family='+FAM:location.pathname)}catch(e){}}
+let INVITE=inviteFrom(location.search); /* הזמנה שעוד לא אושרה */
+function hurl(){const q=[];if(CLOUD_ON()&&FAM)q.push('family='+FAM);if(INVITE)q.push('class='+encodeURIComponent(INVITE));return location.pathname+(q.length?'?'+q.join('&'):'')}
+function hist(mode,state){try{history[mode+'State'](state,'',hurl())}catch(e){}}
 const VIEWS={welcome:()=>welcomeView(),menu:()=>menuView(),topic:a=>topicView(a),progress:()=>progressView(),class:()=>classView(),me:()=>meView()};
 function route(s,a){if(s!=='class')stopBoard();SCREEN=s;SARG=a;(VIEWS[s]||VIEWS.menu)(a)}
 function goto(s,a,mode){if(mode)hist(mode,{s,a});route(s,a)}
@@ -945,6 +959,7 @@ function welcomeView(){
   const nm=getName(),fl=[['+','8%','9%','var(--ink)','0s'],['−','76%','5%','var(--red)','1.2s'],['×','10%','60%','#c99a00','.6s'],['÷','80%','56%','var(--ink)','1.8s'],['=','44%','88%','var(--red)','2.4s'],['+','72%','84%','#c99a00','3s']];
   app.innerHTML=`<div class="screen welcome"><div class="floaties" aria-hidden="true">${fl.map(f=>`<span style="top:${f[2]};left:${f[1]};color:${f[3]};animation-delay:${f[4]}">${f[0]}</span>`).join('')}</div>
   <div class="wbody">${MASCOT}<h1>${nm?`היי ${esc(nm)}!<br>מוכנים להמשיך?`:'היי! בואו נתרגל חשבון'}</h1>
+  ${INVITE&&CLOUD_ON()?`<div class="invitecard"><b>הוזמנתם להצטרף לכיתה</b><span class="code" dir="auto">${esc(INVITE)}</span><small>אחרי שמתחילים, הכינוי והנקודות השבועיות יופיעו בלוח הכיתה. אפשר לעזוב בכל רגע.</small></div>`:''}
   <label class="wl" for="nm">איך קוראים לך?</label><input id="nm" class="nameIn" maxlength="16" autocomplete="off" autocapitalize="words" placeholder="הקלידו שם" value="${esc(nm)}">
   <div class="wl">באיזו רמה מתרגלים?</div>
   <div class="lvcards"><button class="lvc ${LV===1?'on':''}" data-act="lv:1">${LVICON[1]}<b>כמו בחוברת</b><small>כמו התרגילים בחוברת</small></button><button class="lvc ${LV===2?'on':''}" data-act="lv:2">${LVICON[2]}<b>אתגר</b><small>קצת יותר קשה</small></button></div>
@@ -979,7 +994,7 @@ function meView(){
 let BOARD=[],BOARD_UNSUB=null,BOARD_ST='wait',BOARD_SIG='',classTimer=null;
 const CROWN='<svg class="crown" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" fill="#ffd24a" stroke="#1b2b5e" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 function classPush(now){
-  if(!ST.cls||!ST.mid||!CLOUD_ON())return;clearTimeout(classTimer);
+  if(!ST.cls||!ST.mid||!CLOUD_ON()||!SYNCED)return;clearTimeout(classTimer);
   classTimer=setTimeout(async()=>{if(!ST.cls||!ST.mid)return;const f=await fs();if(!f)return;
     try{await f.setDoc(f.doc(f.db,'classes',ST.cls,'members',ST.mid),memberDoc(ST))}catch(e){}},now?0:3000);
 }
@@ -997,7 +1012,7 @@ function paintBoard(){
   const now=new Date(),wk=weekKeyOf(now),mine={id:ST.mid,...memberDoc(ST,now)};
   const list=rankBoard([...BOARD.filter(m=>m.id!==ST.mid),mine],wk),me=list.findIndex(m=>m.id===ST.mid),w=list[me].w,tr=tierOf(w);
   let msg;
-  if(list.length===1)msg='אתם לבד בכיתה בינתיים. שלחו את הקוד לחברים כדי להתחיל להתחרות!';
+  if(list.length===1)msg='אתם לבד בכיתה בינתיים. שלחו את קישור ההזמנה לחברים כדי להתחיל להתחרות!';
   else if(me===0)msg=list[1].w===w?`שווים בנקודות עם ${esc(list[1].n)}! עוד תשובה נכונה והכתר שלכם`:'אתם במקום הראשון! שימרו על הכתר';
   else{const up=list[me-1],gap=up.w-w;msg=gap>0?`עוד ${gap+1} נקודות כדי לעקוף את ${esc(up.n)}`:`שווים בנקודות עם ${esc(up.n)}! עוד תשובה נכונה ועוקפים`}
   const col=(m,r)=>`<div class="pcol p${r+1} ${m.id===ST.mid?'me':''}">${r===0?CROWN:''}<div class="nick">${esc(m.n)}</div><div class="pts">${m.w} נק׳</div><div class="pblock">${r+1}</div></div>`;
@@ -1012,17 +1027,22 @@ function paintBoard(){
 function classView(){
   if(!CLOUD_ON()||!FAM){app.innerHTML=`<div class="screen"><header class="appbar"><h2><span class="mk">הכיתה שלי</span></h2></header><div class="sbody"><p class="fbtext">לוח הכיתה זמין כשהאתר מחובר לענן.</p></div>${navHtml('class')}</div>`;return}
   if(!ST.cls)return joinView();
-  const shown=ST.cls.slice(0,4)+'-'+ST.cls.slice(4);
-  app.innerHTML=`<div class="screen"><header class="appbar"><h2><span class="mk">הכיתה שלי</span></h2><button class="chip" data-copy="${esc(ST.cls)}"><b>קוד הכיתה</b><span dir="ltr">${esc(shown)}</span></button></header>
-  <div class="sbody"><div id="board"></div><p class="pnote">הנקודות מתאפסות בכל יום ראשון. תשובה נכונה = נקודה, ובאתגר = 2 נקודות. שלחו את הקוד לחברים לכיתה כדי שיצטרפו.<br><button class="link" data-act="leaveclass">עזיבת הכיתה</button></p></div>${navHtml('class')}</div>`;
+  const shown=/^[a-z2-9]{8}$/.test(ST.cls)?ST.cls.slice(0,4)+'-'+ST.cls.slice(4):ST.cls;
+  app.innerHTML=`<div class="screen"><header class="appbar"><h2><span class="mk">הכיתה שלי</span></h2><button class="chip" data-copy="${esc(ST.cls)}"><b>קוד הכיתה</b><span dir="auto" class="code">${esc(shown)}</span></button></header>
+  <div class="sbody"><div class="invite"><span>הזמינו חברים לכיתה</span><button class="btn" data-copy="${esc(inviteUrl(location.href.split('#')[0].split('?')[0],ST.cls))}"><span>העתקת קישור הזמנה</span></button></div><div id="board"></div><p class="pnote">הנקודות מתאפסות בכל יום ראשון. תשובה נכונה = נקודה, ובאתגר = 2 נקודות. הקישור שלמעלה מצרף חברים לכיתה בלחיצה אחת.<br><button class="link" data-act="leaveclass">עזיבת הכיתה</button></p></div>${navHtml('class')}</div>`;
   BOARD_SIG='';paintBoard();startBoard();
 }
 function joinView(){
   app.innerHTML=`<div class="screen"><header class="appbar"><h2><span class="mk">הכיתה שלי</span></h2></header><div class="sbody">
   <div class="classhero">${CROWN}<p>מי מתרגל הכי הרבה השבוע? מצטרפים לכיתה ומתחרים בכיף על הכתר.</p></div>
   <div class="field"><label for="cn">הכינוי שלי בלוח</label><input id="cn" class="nameIn small" maxlength="16" autocomplete="off" value="${esc(getName())}"><small class="hint">מומלץ כינוי, לא שם מלא. הכינוי והנקודות השבועיות יופיעו לכל מי שבכיתה, ואפשר לעזוב בכל רגע.</small></div>
-  <div class="field"><label for="cc">יש לי קוד כיתה</label><div class="inrow"><input id="cc" class="nameIn small" dir="ltr" maxlength="12" autocomplete="off" autocapitalize="none" placeholder="abcd-2345"><button class="btn" data-act="joinclass"><span>הצטרפות</span></button></div><small id="cerr" class="hint err"></small></div>
+  <div class="field"><label for="cc">קוד הכיתה</label><div class="inrow"><input id="cc" class="nameIn small" dir="auto" maxlength="24" autocomplete="off" autocapitalize="none" placeholder="למשל: ד2נבו"><button class="btn" data-act="joinclass"><span>הצטרפות</span></button></div><small id="cerr" class="hint err"></small><small class="hint">יש כבר קוד? מקלידים ולוחצים הצטרפות. רוצים כיתה חדשה? אפשר לבחור קוד משלכם (4 עד 20 אותיות וספרות) וללחוץ ״יצירת כיתה חדשה״, או להשאיר ריק לקוד אקראי. קוד קצר קל לניחוש, וכל מי שינחש אותו יראה את הלוח.</small></div>
   <div class="or">או</div><button class="btn big wide alt" data-act="createclass">יצירת כיתה חדשה</button></div>${navHtml('class')}</div>`;
+}
+async function acceptInvite(nick){ /* מצטרפים לכיתה מההזמנה (אם אין עדיין כיתה כזו, זה יוצר אותה) */
+  const code=INVITE,old=ST.cls,mid=ST.mid;INVITE='';
+  if(old&&mid&&old!==code){const f=await fs();if(f){try{await f.deleteDoc(f.doc(f.db,'classes',old,'members',mid))}catch(e){}}}
+  hist('replace',{s:'class'});enterClass(code,nick);
 }
 function enterClass(code,nick){ST.cls=code;ST.mid=ST.mid||newCode();ST.name=nick;saveST();classPush(true);route('class')}
 async function copyLink(b){
@@ -1043,22 +1063,35 @@ const ACT={
   go(){
     const i=document.getElementById('nm'),v=cleanName(i.value);
     if(!v){i.classList.remove('shake');void i.offsetWidth;i.classList.add('shake');i.focus();return}
-    ST.name=v;setLV(LV);goto('menu',null,'replace');
+    ST.name=v;setLV(LV);
+    if(INVITE&&CLOUD_ON()&&ST.cls!==INVITE){acceptInvite(v);return}
+    INVITE='';goto('menu',null,'replace');
   },
   savename(v,a){const i=document.getElementById('nm2'),n=cleanName(i.value);if(!n){i.focus();return}setName(n);i.value=n;const sp=a.querySelector('span');sp.textContent='נשמר ✓';setTimeout(()=>{sp.textContent='שמירה'},1800)},
   reset(){if(confirm('למחוק את כל ההתקדמות והשיאים?')){ST={a:{},log:[],days:{},pts:{},name:ST.name,lv:ST.lv,cls:ST.cls,mid:ST.mid};BEST={};try{localStorage.removeItem(SK);localStorage.removeItem(KEY);localStorage.removeItem(RK)}catch(e){}saveST();cloudRunPush(true);route(SCREEN,SARG)}}
 };
 Object.assign(ACT,{
   async joinclass(v,a){
-    const cn=document.getElementById('cn'),nick=cleanName(cn.value),code=document.getElementById('cc').value.toLowerCase().replace(/[^a-z2-9]/g,''),err=document.getElementById('cerr');
+    const cn=document.getElementById('cn'),nick=cleanName(cn.value),code=normClass(document.getElementById('cc').value),err=document.getElementById('cerr');
     const bad=t=>{err.textContent=t};
     if(!nick){cn.focus();return bad('איך נקרא לכם בלוח? כתבו כינוי')}
-    if(!CLASS_RE.test(code))return bad('הקוד הוא 8 אותיות וספרות. בדקו שהעתקתם אותו נכון');
+    if(!CLASS_RE.test(code))return bad('הקוד הוא 4 עד 20 אותיות וספרות. בדקו שהקלדתם אותו נכון');
     bad('בודקים…');const f=await fs();if(!f)return bad('אין חיבור לענן כרגע. נסו שוב בעוד רגע');
     try{const sn=await f.getDocs(f.query(f.collection(f.db,'classes',code,'members'),f.limit(1)));if(sn.empty)return bad('לא מצאנו כיתה עם הקוד הזה')}catch(e){return bad('לא הצלחנו לבדוק את הקוד. נסו שוב')}
     enterClass(code,nick);
   },
-  createclass(){const cn=document.getElementById('cn'),nick=cleanName(cn.value);if(!nick){cn.focus();document.getElementById('cerr').textContent='איך נקרא לכם בלוח? כתבו כינוי';return}enterClass(newCode().slice(0,8),nick)},
+  async createclass(){
+    const cn=document.getElementById('cn'),nick=cleanName(cn.value),raw=document.getElementById('cc').value,err=document.getElementById('cerr'),bad=t=>{err.textContent=t};
+    if(!nick){cn.focus();return bad('איך נקרא לכם בלוח? כתבו כינוי')}
+    let code=normClass(raw);
+    if(!raw.trim())code=newCode().slice(0,8);
+    else{
+      if(!CLASS_RE.test(code))return bad('הקוד הוא 4 עד 20 אותיות וספרות');
+      bad('בודקים…');const f=await fs();if(!f)return bad('אין חיבור לענן כרגע. נסו שוב בעוד רגע');
+      try{const sn=await f.getDocs(f.query(f.collection(f.db,'classes',code,'members'),f.limit(1)));if(!sn.empty)return bad('כבר קיימת כיתה עם הקוד הזה. אם היא שלכם, לחצו על הצטרפות')}catch(e){return bad('לא הצלחנו לבדוק את הקוד. נסו שוב')}
+    }
+    enterClass(code,nick);
+  },
   async leaveclass(){
     if(!confirm('לעזוב את הכיתה? הכינוי והנקודות שלכם יימחקו מהלוח.'))return;
     const cls=ST.cls,mid=ST.mid;ST.cls='';stopBoard();saveST();const f=await fs();

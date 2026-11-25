@@ -10,7 +10,7 @@ const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const m = html.match(/<script>([\s\S]*?)<\/script>/);
 assert.ok(m, 'no inline <script> found in index.html');
 
-const ctx = vm.createContext({ console });
+const ctx = vm.createContext({ console, URLSearchParams });
 vm.runInContext(m[1], ctx);
 const { GENS, TOPICS, setLV } = vm.runInContext(
   '({GENS, TOPICS, setLV: v => { LV = v; }})', ctx);
@@ -77,7 +77,7 @@ test('level 1 place-value generators stay within 100,000 (as in the workbook)', 
 });
 
 // ---- progress statistics (pure helpers) ----
-const helpers = vm.runInContext('({subStat, streak, statsTotal, mergeStats, dkey, esc, cleanName, CLASS_RE, weekStartOf, weekKeyOf, weekPts, memberDoc, rankBoard, tierOf})', ctx);
+const helpers = vm.runInContext('({subStat, streak, statsTotal, mergeStats, dkey, esc, cleanName, CLASS_RE, normClass, inviteFrom, inviteUrl, weekStartOf, weekKeyOf, weekPts, memberDoc, rankBoard, tierOf})', ctx);
 const bits = (n1, n0) => '1'.repeat(n1) + '0'.repeat(n0);
 
 test('subStat: status thresholds use the last-20 window', () => {
@@ -190,12 +190,48 @@ test('tierOf gives playful ranks with progress to the next one', () => {
   assert.equal(helpers.tierOf(1000).next, null);
 });
 
-test('class codes are 8 safe characters', () => {
-  assert.ok(helpers.CLASS_RE.test('abcd2345'));
-  for (const bad of ['abcd234', 'abcd23456', 'ABCD2345', 'abcd-234', 'abcd0145', 'abcd1l45']) assert.ok(!helpers.CLASS_RE.test(bad), bad);
+test('class codes: 4-20 Hebrew letters, Latin letters or digits', () => {
+  for (const ok of ['abcd2345', 'ד2נבו', 'כיתה4', 'ab12', 'a'.repeat(20), 'ךםןףץ12']) assert.ok(helpers.CLASS_RE.test(ok), ok);
+  for (const bad of ['abc', 'a'.repeat(21), 'ab cd', 'ab-cd', 'ab/cd', 'ab.cd', '', 'ABCD', 'דנה!!']) assert.ok(!helpers.CLASS_RE.test(bad), JSON.stringify(bad));
+});
+
+test('normClass makes typed and pasted codes comparable', () => {
+  assert.equal(helpers.normClass(' ד 2 נבו '), 'ד2נבו');
+  assert.equal(helpers.normClass('ABCD-2345'), 'abcd2345');
+  assert.equal(helpers.normClass('a/b\\c<d>'), 'abcd');
+  assert.equal(helpers.normClass(null), '');
+  assert.ok(helpers.CLASS_RE.test(helpers.normClass('78ff-S4UJ')));
 });
 
 test('mergeStats keeps class membership and weekly points from the cloud', () => {
   const m = helpers.mergeStats({ a: {}, log: [], days: {} }, { a: { x: { c: 1, t: 9, r: '' } }, pts: { '2026-11-25': 5 }, cls: 'abcd2345', mid: 'm'.repeat(24) });
   assert.equal(m.cls, 'abcd2345'); assert.equal(m.pts['2026-11-25'], 5); assert.equal(m.mid.length, 24);
+});
+
+test('invite links carry the class code, including Hebrew codes', () => {
+  assert.equal(helpers.inviteUrl('https://x.test/app/', 'ד2נבו'), 'https://x.test/app/?class=%D7%932%D7%A0%D7%91%D7%95');
+  assert.equal(helpers.inviteFrom('?class=%D7%932%D7%A0%D7%91%D7%95'), 'ד2נבו');   // round trip
+  assert.equal(helpers.inviteFrom('?family=abc&class=ABCD-2345'), 'abcd2345');     // normalised
+  assert.equal(helpers.inviteFrom('?class=ab'), '');                               // too short -> ignored
+  assert.equal(helpers.inviteFrom('?class=%3Cscript%3E'), 'script');               // markup characters stripped
+  assert.equal(helpers.inviteFrom(''), '');
+  for (const c of ['ד2נבו', 'abcd2345', 'כיתה4']) assert.equal(helpers.inviteFrom(helpers.inviteUrl('', c).slice(0)), c);
+});
+
+test('mergeStats restores identity from the cloud even when it has no answers', () => {
+  const cloud = { a: {}, log: [], days: {}, name: 'דנה', lv: 2, cls: 'ד2נבו', mid: 'm'.repeat(24) };
+  const m = helpers.mergeStats({ a: {}, log: [], days: {} }, cloud);          // fresh device, nothing answered anywhere
+  assert.equal(m.name, 'דנה'); assert.equal(m.lv, 2); assert.equal(m.cls, 'ד2נבו'); assert.equal(m.mid.length, 24);
+});
+
+test('mergeStats never replaces richer local progress, but fills missing identity', () => {
+  const local = { a: { place: { c: 5, t: 9, r: '' } }, log: [], days: {}, name: 'נועה' };
+  const cloud = { a: { place: { c: 1, t: 2, r: '' } }, log: [], days: {}, name: 'דנה', cls: 'abcd2345', mid: 'm'.repeat(24) };
+  const m = helpers.mergeStats(local, cloud);
+  assert.equal(helpers.statsTotal(m), 9);          // local answers kept
+  assert.equal(m.name, 'נועה');                    // local name kept
+  assert.equal(m.cls, 'abcd2345');                 // missing class filled from the cloud
+  assert.equal(helpers.mergeStats(local, null), local);
+  const same = { a: { place: { c: 5, t: 9, r: '' } }, log: [], days: {}, name: 'נועה', cls: 'x', mid: 'y' };
+  assert.equal(helpers.mergeStats(same, { a: {}, name: 'ללא', cls: 'z', mid: 'w' }), same); // nothing to fill -> same object
 });
