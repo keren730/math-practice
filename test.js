@@ -65,3 +65,13 @@ test('every generator in GENS is used by some sub-topic', () => {
   const used = new Set(TOPICS.flatMap(t => t.subs.flatMap(s => s.gens)));
   for (const [name, g] of Object.entries(GENS)) assert.ok(used.has(g), `${name} is never used`);
 });
+
+test('level 1 place-value generators stay within 100,000 (as in the workbook)', () => {
+  setLV(1);
+  for (const name of ['qAddUnits', 'qWriteNumber', 'qExpanded', 'qPlaceOp', 'qSeqNext', 'qSeqMiss', 'qNeighbor', 'qNumGrid']) {
+    for (let i = 0; i < RUNS; i++) {
+      const q = GENS[name]();
+      assert.ok(q.answer <= 99999, `${name}: answer ${q.answer} exceeds 99,999 at level 1`);
+    }
+  }
+});

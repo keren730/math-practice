@@ -123,7 +123,7 @@ function mc(q,correct,distractors,explain,o={}){
 
 /* ===================== מבנה עשרוני ===================== */
 function qDigitValue(){
-  const len=LV===1?R(5,6):R(5,7);const digs=shuffle([1,2,3,4,5,6,7,8,9]).slice(0,len);
+  const len=LV===1?5:R(5,7);const digs=shuffle([1,2,3,4,5,6,7,8,9]).slice(0,len);
   const N=Number(digs.join(''));const idx=R(0,len-1);const p=len-1-idx;const d=digs[idx];const val=d*10**p;
   const ds=[val*10,p>0?val/10:val*100,d,val*100,val/100>=1?val/100:val*1000,digs[(idx+1)%len]*10**p].filter(x=>x!==val);
   return mc(`מהו ערך הספרה <b>${d}</b> במספר ${eq(fmt(N))} ?`,fmt(val),ds.map(fmt),
@@ -131,14 +131,15 @@ function qDigitValue(){
 }
 function qAddUnits(){
   const U=[['עשרות',10],['מאות',100],['אלפים',1000],['עשרות אלפים',10000]];
-  const [name,u]=pick(U);const k=R(2,9);const N=R(10000,899999);const add=Math.random()<.6;
+  const [name,u]=pick(U);const k=R(2,9);const N=R(10000,LV===1?99999:899999);const add=Math.random()<.6;
   if(!add&&N-k*u<=0)return qAddUnits();
   const ans=add?N+k*u:N-k*u;
+  if(LV===1&&ans>99999)return qAddUnits(); /* החוברת: עד 100,000 */
   return num(add?`מוסיפים ${k} ${name} למספר ${eq(fmt(N))}. איזה מספר מתקבל?`:`מחסירים ${k} ${name} מהמספר ${eq(fmt(N))}. איזה מספר מתקבל?`,ans,
    `${k} ${name} הם ${eq(fmt(k*u))}.<br>${eq(`${fmt(N)} ${add?'+':'−'} ${fmt(k*u)} = ${fmt(ans)}`)}<br>בטבלה רואים: הספרה ב${PLACE[String(u).length-1]} ${add?'גדלה':'קטנה'} ב-${k}.`,{svg:pvTable(String(N).length,[String(N).split('')],String(N).length-String(u).length)});
 }
 function qWriteNumber(){
-  const len=LV===1?R(5,6):R(5,7);const ds=[];
+  const len=LV===1?5:R(5,7);const ds=[];
   for(let i=0;i<len;i++){ds.push(i===0?R(2,9):(Math.random()<.3?0:R(2,9)))}
   const names=PNAMES;
   const parts=[];let n=0;
@@ -149,7 +150,7 @@ function qWriteNumber(){
    `כותבים כל ספרה במקומה${zeros?', ובמקום שאין בו כלום כותבים 0':''}: ${eq(fmt(n))}`,{svg:pvTable(len,[ds.map(d=>d>0?d:'')],-1)});
 }
 function qCompareBig(){
-  const len=LV===1?R(5,6):R(5,7);let a=[R(1,9)];for(let i=1;i<len;i++)a.push(R(0,9));
+  const len=LV===1?5:R(5,7);let a=[R(1,9)];for(let i=1;i<len;i++)a.push(R(0,9));
   const pos=R(1,len-1);let b=a.slice();let nd;do{nd=R(0,9)}while(nd===a[pos]);b[pos]=nd;
   const A=Number(a.join('')),B=Number(b.join(''));const big=Math.max(A,B),small=Math.min(A,B);
   return mc(`איזה מספר גדול יותר?`,fmt(big),[fmt(small)],
@@ -178,6 +179,8 @@ function seqParams(){
   const step=pick(LV===1?[10,100,500,1000,10000]:[10,50,100,250,500,1000,2000,5000,10000,25000]);const down=Math.random()<(LV===1?.3:.4);
   let base=LV===1?R(1,90)*1000:R(1,300)*1000+(Math.random()<.5?R(0,9)*100:0);if(LV!==1&&step<1000&&Math.random()<.5)base=R(100,9000)*10;
   if(down&&base<8*step)base+=8*step;
+  if(LV===1&&!down&&base+6*step>99000)base=R(1,Math.floor((99000-6*step)/1000))*1000; /* החוברת: עד 100,000 */
+  if(LV===1&&down&&base>99000)base=R(Math.ceil(6*step/1000),99)*1000;
   const t=Array.from({length:7},(_,i)=>down?base-i*step:base+i*step);
   return {step,down,t};
 }
@@ -195,6 +198,51 @@ function qSeqStep(){
   const {step,down,t}=seqParams();
   return num(`בכמה מדלגים בסדרה? ${eq(t.slice(0,5).map(fmt).join(' , ')+' , ...')}`,step,
    `מחסרים בין שני מספרים סמוכים: ${eq(`${fmt(down?t[0]:t[1])} − ${fmt(down?t[1]:t[0])} = ${fmt(step)}`)}`);
+}
+
+/* ===== סגנון החוברת (עמ׳ 95-110, 117-121) ===== */
+function qExpanded(){
+  const len=LV===1?5:R(5,6);const ds=[];
+  for(let i=0;i<len;i++)ds.push(i===0?R(1,9):R(0,9));
+  const N=Number(ds.join(''));
+  if(Math.random()<.6){
+    const expr=ds.map((d,i)=>`${d} × ${fmt(10**(len-1-i))}`).join(' + ');
+    return num(`איזה מספר מתקבל? ${eq(expr)}`,N,
+     `כל ספרה נכנסת למקום שלה (ספרה 0 – מקום ריק): ${eq(fmt(N))}`,{svg:pvTable(len,[ds],-1)});
+  }
+  const vals=shuffle(ds.map((d,i)=>d*10**(len-1-i)).filter(v=>v>0));
+  return num(`איזה מספר מתקבל? ${eq(vals.map(fmt).join(' + '))}`,N,
+   `מחברים את הערכים: ${eq(`${vals.map(fmt).join(' + ')} = ${fmt(N)}`)}`);
+}
+function qPlaceOp(){
+  const u=pick([10,100,1000]),k=R(2,9),N=R(10000,LV===1?99999:899999),add=Math.random()<.5;
+  const ans=add?N+k*u:N-k*u;
+  if(ans<=0||(LV===1&&ans>99999))return qPlaceOp();
+  return num(`נתון ש-${eq(`● = ${k}`)}. חשבו: ${eq(`${fmt(N)} ${add?'+':'−'} ● × ${fmt(u)}`)}`,ans,
+   `קודם כפל: ${eq(`● × ${fmt(u)} = ${k} × ${fmt(u)} = ${fmt(k*u)}`)}<br>אחר כך ${add?'חיבור':'חיסור'}: ${eq(`${fmt(N)} ${add?'+':'−'} ${fmt(k*u)} = ${fmt(ans)}`)}`);
+}
+function qNeighbor(){
+  const X=pick([R(11,99)*1000,R(100,990)*100,R(1000,9900)*10]);
+  if(Math.random()<.5)return num(`מהו המספר שבא <b>לפני</b> ${eq(fmt(X))} ?`,X-1,
+   `המספר שלפני הוא קטן ב-1: ${eq(`${fmt(X)} − 1 = ${fmt(X-1)}`)}<br>כשמחסירים 1 ממספר שנגמר באפסים, האפסים הופכים ל-9.`);
+  return num(`מהו המספר שבא <b>אחרי</b> ${eq(fmt(X-1))} ?`,X,
+   `המספר שאחרי הוא גדול ב-1: ${eq(`${fmt(X-1)} + 1 = ${fmt(X)}`)}<br>כשמוסיפים 1 למספר שנגמר ב-9, מתחלפת ספרה ונוצרים אפסים.`);
+}
+function qNumGrid(){
+  const cols=6,rows=4,s=R(1000,9900)*10+R(0,9),h=R(2,cols*rows-3),total=cols*rows;
+  let t='<div style="overflow-x:auto"><table dir="ltr" style="border-collapse:collapse;margin:0 auto">';
+  for(let r=0;r<rows;r++){t+='<tr>';for(let c=0;c<cols;c++){const i=r*cols+c;
+    t+=`<td style="border:1.5px solid #b8c4e8;padding:5px 7px;font-size:14px;text-align:center;${i===h?'background:#fff3bf;font-weight:800;color:#e8590c':''}">${i===h?'?':fmt(s+i)}</td>`}t+='</tr>'}
+  t+='</table></div>';
+  return num(`בלוח המספרים כל מספר גדול ב-1 מהמספר שלפניו. איזה מספר מוסתר במקום סימן השאלה?`,s+h,
+   `המספר שבא לפני ה-? הוא ${eq(fmt(s+h-1))}, והוא גדול ב-1 מהקודם. לכן: ${eq(`${fmt(s+h-1)} + 1 = ${fmt(s+h)}`)}<br>אפשר גם לבדוק עם המספר שאחריו: ${eq(fmt(s+h+1))}.`,{svg:t});
+}
+function qLineSeg(){
+  const st=pick(LV===1?[10,100,1000]:[10,100,1000,5000,10000]);
+  const lo=R(10,90)*st,X=lo+R(1,st-1);
+  const seg=a=>`${fmt(a)} ל-${fmt(a+st)}`;
+  return mc(`על ישר המספרים יש קפיצות של ${fmt(st)}. בין אילו שני מספרים נמצא המספר ${eq(fmt(X))} ?`,seg(lo),[seg(lo-st),seg(lo+st),seg(lo+2*st),seg(lo-2*st)],
+   `מחפשים את המספר העגול הגדול ביותר שקטן מ-${eq(fmt(X))}: ${eq(fmt(lo))}.<br>המספר העגול הבא הוא ${eq(fmt(lo+st))}. לכן ${eq(fmt(X))} נמצא בין ${eq(seg(lo))}.`);
 }
 
 /* ===================== פעולות חשבון ===================== */
@@ -219,7 +267,16 @@ function qMul(){
 function qDiv(){const b=R(2,LV===1?6:9),q=R(12,LV===1?60:150),a=b*q;
   return num(`חשבו: ${eq(`${fmt(a)} ÷ ${b} = ?`)}`,q,`חילוק הוא ההפך מכפל. בדיקה: ${eq(`${q} × ${b} = ${a}`)}`)}
 function qOrder(){
-  const t=R(0,LV===1?2:5);
+  const t=pick(LV===1?[0,1,2,3,4,5,6,7]:[0,1,2,3,4,5,6,7,8,9]);
+  /* בסגנון חוברת עמ׳ 116: מספרים עגולים, סוגריים וחילוק */
+  if(t===6){const d=R(1,9)*1000,y=R(2,9),b=R(2,9),a=R(2,99),c=d+y*1000;
+    return num(`חשבו לפי סדר פעולות החשבון: ${eq(`${a} + ${b} × (${fmt(c)} − ${fmt(d)})`)}`,a+b*y*1000,`קודם מה שבסוגריים: ${eq(`${fmt(c)} − ${fmt(d)} = ${fmt(y*1000)}`)}<br>אחר כך כפל: ${eq(`${b} × ${fmt(y*1000)} = ${fmt(b*y*1000)}`)}<br>ובסוף חיבור: ${eq(`${a} + ${fmt(b*y*1000)} = ${fmt(a+b*y*1000)}`)}`)}
+  if(t===7){const A=R(10,90)*1000,B=R(3,9)*1000,C=R(1,B/1000-1)*1000;
+    return num(`חשבו לפי סדר פעולות החשבון: ${eq(`${fmt(A)} − (${fmt(B)} − ${fmt(C)})`)}`,A-(B-C),`קודם מה שבסוגריים: ${eq(`${fmt(B)} − ${fmt(C)} = ${fmt(B-C)}`)}<br>אחר כך חיסור: ${eq(`${fmt(A)} − ${fmt(B-C)} = ${fmt(A-(B-C))}`)}`)}
+  if(t===8){const q=R(2,5),m=R(2,9)*q*100,base=R(20,90)*1000,d=R(2,9);
+    return num(`חשבו לפי סדר פעולות החשבון: ${eq(`${fmt(m)} ÷ ${q} × (${fmt(base+d)} − ${fmt(base)})`)}`,m/q*d,`קודם מה שבסוגריים: ${eq(`${fmt(base+d)} − ${fmt(base)} = ${d}`)}<br>אחר כך חילוק וכפל משמאל לימין: ${eq(`${fmt(m)} ÷ ${q} = ${fmt(m/q)}`)} , ${eq(`${fmt(m/q)} × ${d} = ${fmt(m/q*d)}`)}`)}
+  if(t===9){const b=R(2,5),e=R(2,9),dd=R(2,9)*e*100,P=b*10000+R(1000,9999);
+    return num(`חשבו לפי סדר פעולות החשבון: ${eq(`${fmt(P)} − ${b} × ${fmt(10000)} + ${fmt(dd)} ÷ ${e}`)}`,P-b*10000+dd/e,`קודם כפל וחילוק: ${eq(`${b} × ${fmt(10000)} = ${fmt(b*10000)}`)} , ${eq(`${fmt(dd)} ÷ ${e} = ${fmt(dd/e)}`)}<br>אחר כך משמאל לימין: ${eq(`${fmt(P)} − ${fmt(b*10000)} = ${fmt(P-b*10000)}`)} , ${eq(`${fmt(P-b*10000)} + ${fmt(dd/e)} = ${fmt(P-b*10000+dd/e)}`)}`)}
   if(t===0){const a=R(2,50),b=R(2,9),c=R(2,9);return num(`חשבו לפי סדר פעולות החשבון: ${eq(`${a} + ${b} × ${c}`)}`,a+b*c,`קודם כפל: ${eq(`${b} × ${c} = ${b*c}`)}<br>אחר כך חיבור: ${eq(`${a} + ${b*c} = ${a+b*c}`)}`)}
   if(t===1){const a=R(2,30),b=R(2,30),c=R(2,9);return num(`חשבו לפי סדר פעולות החשבון: ${eq(`(${a} + ${b}) × ${c}`)}`,(a+b)*c,`קודם מה שבסוגריים: ${eq(`${a} + ${b} = ${a+b}`)}<br>אחר כך כפל: ${eq(`${a+b} × ${c} = ${(a+b)*c}`)}`)}
   if(t===2){const a=R(3,12),b=R(3,9),c=R(1,a*b-1);return num(`חשבו לפי סדר פעולות החשבון: ${eq(`${a} × ${b} − ${c}`)}`,a*b-c,`קודם כפל: ${eq(`${a} × ${b} = ${a*b}`)}<br>אחר כך חיסור: ${eq(`${a*b} − ${c} = ${a*b-c}`)}`)}
@@ -516,9 +573,9 @@ function qDiagName(){
 /* ===================== מבנה הנושאים ===================== */
 const TOPICS=[
  {id:'dec',title:'מבנה עשרוני',emoji:'🔢',color:'#7048e8',subs:[
-  {id:'place',title:'ערך הספרה',pages:'עמ׳ 95-98, 101-104',gens:[qDigitValue,qAddUnits,qWriteNumber,qCompareBig]},
-  {id:'line',title:'ישר המספרים',pages:'עמ׳ 117-121',gens:[qLine,qLine,qMiddle]},
-  {id:'seq',title:'סדרות ודילוגים שווים',pages:'עמ׳ 106-110, 135-137',gens:[qSeqNext,qSeqMiss,qSeqStep]}]},
+  {id:'place',title:'ערך הספרה',pages:'עמ׳ 95-98, 101-104',gens:[qDigitValue,qAddUnits,qWriteNumber,qCompareBig,qExpanded,qPlaceOp]},
+  {id:'line',title:'ישר המספרים',pages:'עמ׳ 117-121',gens:[qLine,qLine,qMiddle,qLineSeg]},
+  {id:'seq',title:'סדרות ודילוגים שווים',pages:'עמ׳ 106-110, 135-137',gens:[qSeqNext,qSeqMiss,qSeqStep,qNeighbor,qNumGrid]}]},
  {id:'ar',title:'פעולות חשבון',emoji:'➕',color:'#f76707',subs:[
   {id:'addsub',title:'חיבור וחיסור (כולל מציאת נעלם)',pages:'עמ׳ 131-134, 142-145',gens:[qAdd,qSub,qUnknown,qUnknown]},
   {id:'muldiv',title:'כפל, חילוק וסדר פעולות',pages:'עמ׳ 116',gens:[qMul,qDiv,qOrder,qOrder]},
@@ -532,7 +589,7 @@ const TOPICS=[
   {id:'shapes',title:'זוויות, אלכסונים וצלעות',pages:'חוברת גיאומטריה עמ׳ 30-36, 38-42, 54, 56-61',gens:[qAngle,qDiagonals,qSides,qDiagName,qShapeProp,qShapeProp]}]}
 ];
 const ALLSUBS=TOPICS.flatMap(t=>t.subs);
-const GENS={qDigitValue,qAddUnits,qWriteNumber,qCompareBig,qLine,qMiddle,qSeqNext,qSeqMiss,qSeqStep,qAdd,qSub,qUnknown,qMul,qDiv,qOrder,qWord,qFracShape,qFracTerms,qFracOfQty,qFracKind,qWholeFrac,qToMixed,qToImproper,qImproperWhole,qCmpSame,qCmpOne,qCmpMixed,qOrder3,qRectAreaPer,qSquare,qMissingSide,qCmpAreas,qGrid,qGarden,qShapeProp,qDiagonals,qAngle,qSides,qDiagName};
+const GENS={qExpanded,qPlaceOp,qNeighbor,qNumGrid,qLineSeg,qDigitValue,qAddUnits,qWriteNumber,qCompareBig,qLine,qMiddle,qSeqNext,qSeqMiss,qSeqStep,qAdd,qSub,qUnknown,qMul,qDiv,qOrder,qWord,qFracShape,qFracTerms,qFracOfQty,qFracKind,qWholeFrac,qToMixed,qToImproper,qImproperWhole,qCmpSame,qCmpOne,qCmpMixed,qOrder3,qRectAreaPer,qSquare,qMissingSide,qCmpAreas,qGrid,qGarden,qShapeProp,qDiagonals,qAngle,qSides,qDiagName};
 
 /* ===================== ממשק ===================== */
 if(typeof document!=='undefined'){
