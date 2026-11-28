@@ -124,7 +124,7 @@ button{font-family:inherit;color:inherit}
 .fig{max-width:100%;height:auto;max-height:230px;direction:ltr}
 .fig text{font-family:Assistant,Arial,sans-serif;fill:var(--ink)}
 .lbl{font-size:17px;font-weight:700}
-.eq{display:inline-block;direction:ltr;unicode-bidi:isolate;font-weight:800;font-size:1.15em;white-space:nowrap}
+.eq{display:inline-block;max-width:100%;direction:ltr;unicode-bidi:isolate;font-weight:800;font-size:1.15em;white-space:normal;overflow-wrap:anywhere;text-align:left} /* שורה אחת כשיש מקום, ועוברת שורה כשצריך */
 .fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 3px;direction:ltr;font-weight:800}
 .fr .n{border-bottom:2px solid currentColor;padding:0 5px}
 .fr .d{padding:0 5px}
@@ -140,6 +140,7 @@ button{font-family:inherit;color:inherit}
 .numrow{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
 .numrow input{font-family:inherit;font-size:26px;font-weight:800;width:200px;padding:6px 10px;border:0;border-bottom:3px solid var(--ink);border-radius:0;background:transparent;text-align:center;direction:ltr;color:var(--ink)}
 .numrow input:focus{outline:none;background:#fff6cf}
+.numrow input.shake{animation:shake .4s}
 .numrow input.right{border-color:var(--ok);background:var(--okbg)}
 .numrow input.wrong{border-color:var(--bad);background:var(--badbg)}
 .unit{color:var(--ink2);font-weight:700;padding-bottom:8px}
@@ -201,7 +202,7 @@ button{font-family:inherit;color:inherit}
 .brow .rk{display:grid;place-items:center;width:30px;height:30px;border:1.5px solid var(--ink);border-radius:50%;font-weight:800;font-size:14px;background:#fff}
 .brow .nm{font-weight:800}.brow .nm small{display:block;color:var(--ink2);font-weight:600;font-size:12px}
 .brow .bp{font-family:"Secular One",Assistant,sans-serif;font-size:19px}
-@media(max-width:520px){h1{font-size:30px}.qtext{font-size:20px}.card{padding:16px}.stats{grid-template-columns:repeat(2,1fr);row-gap:12px}.prow{grid-template-columns:1fr 70px 40px;row-gap:2px}.prow .pn{grid-column:1/-1}.prow .ps{grid-column:1/-1;margin-top:-2px}.pv th{font-size:11px;min-width:40px;padding:4px 2px}.pv td{font-size:22px;min-width:40px;height:44px}.chip b{font-size:15px}}
+@media(max-width:520px){h1{font-size:30px}.qtext{font-size:20px}.card{padding:16px}.stats{grid-template-columns:repeat(2,1fr);row-gap:12px}.prow{grid-template-columns:1fr 70px 40px;row-gap:2px}.prow .pn{grid-column:1/-1}.prow .ps{grid-column:1/-1;margin-top:-2px}.pv{width:100%;table-layout:fixed}.pv th{font-size:10px;min-width:0;padding:3px 1px;line-height:1.15}.pv td{font-size:clamp(16px,6.2vw,22px);min-width:0;height:44px;padding:0}.chip b{font-size:15px}}
 @media(max-height:640px){.mascot{width:64px}.wbody{gap:8px}.wbody h1{font-size:26px}.tile{min-height:112px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -211,7 +212,7 @@ button{font-family:inherit;color:inherit}
 <script>
 /* ===================== כלי עזר ===================== */
 let LV=1; /* 1 = כמו בחוברת (ברירת מחדל), 2 = אתגר: מעט קשה יותר */
-const QN=20; /* שאלות בכל תרגול */
+const QN=12; /* שאלות בכל תרגול */
 const QM=40; /* שאלות במבדק מלא */
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[R(0,a.length-1)];
@@ -351,7 +352,7 @@ function qNeighbor(){
    `המספר שאחרי הוא גדול ב-1: ${eq(`${fmt(X-1)} + 1 = ${fmt(X)}`)}<br>כשמוסיפים 1 למספר שנגמר ב-9, מתחלפת ספרה ונוצרים אפסים.`);
 }
 function qNumGrid(){
-  const cols=6,rows=4,s=R(1000,9900)*10+R(0,9),h=R(2,cols*rows-3),total=cols*rows;
+  const cols=4,rows=5,s=R(1000,9900)*10+R(0,9),h=R(2,cols*rows-3),total=cols*rows;
   let t='<div style="overflow-x:auto"><table dir="ltr" style="border-collapse:collapse;margin:0 auto">';
   for(let r=0;r<rows;r++){t+='<tr>';for(let c=0;c<cols;c++){const i=r*cols+c;
     t+=`<td style="border:1.5px solid #b7c2dc;padding:5px 7px;font-size:14px;text-align:center;${i===h?'background:#fff3bf;font-weight:800;color:#c23b2e':''}">${i===h?'?':fmt(s+i)}</td>`}t+='</tr>'}
@@ -1061,28 +1062,44 @@ function build(gens,n,exact){
 }
 function start(title,gens,n,id,exact){S={title,gens,id,qs:build(gens,n,exact),i:0,score:0,wrong:[],done:false,exact:!!exact};show()}
 function show(){
-  const q=S.qs[S.i],n=S.qs.length;S.done=false;saveRun();SCREEN='quiz';
+  const q=S.qs[S.i],n=S.qs.length;S.done=false;S.missed=false;S.tries=0;saveRun();SCREEN='quiz';
   app.innerHTML=`<div class="screen s-quiz"><div class="top"><button class="iconbtn" id="exit" aria-label="יציאה מהתרגול">✕</button><div class="prog" aria-hidden="true">${Array.from({length:n},(_,k)=>`<i class="${k<S.i?'on':k===S.i?'cur':''}"></i>`).join('')}</div><span class="cnt">${S.i+1} מתוך ${n}</span></div>
   <div class="sbody"><div class="card"><div class="qhead"><span class="qn">${S.i+1}</span><span>${S.title}</span></div>${q.svg?`<div class="figwrap">${q.svg}</div>`:''}<div class="qtext">${q.q}</div>
   <div id="ans">${q.type==='num'?`<div class="numrow"><input id="in" type="text" inputmode="numeric" autocomplete="off" aria-label="התשובה שלכם" placeholder="התשובה"><span class="unit">${q.unit}</span><button class="btn" id="chk">בדיקה</button></div>`
    :`<div class="opts">${q.options.map((o,i)=>`<button class="opt" data-i="${i}">${o.h}</button>`).join('')}</div>`}</div><div id="fb"></div></div></div><div class="qbar" id="qbar"></div></div>`;
   document.getElementById('exit').onclick=()=>ACT.back();
   if(q.type==='num'){const inp=document.getElementById('in');inp.focus({preventScroll:true});
-    const go=()=>{const raw=inp.value.replace(/[,\s]/g,'');if(raw===''||isNaN(Number(raw))){inp.focus();return}answer(Number(raw)===q.answer,String(Number(raw)))};
+    const go=()=>{const raw=inp.value.replace(/[,\s]/g,'');if(raw===''||isNaN(Number(raw))){inp.focus();return}answer(Number(raw)===q.answer)};
     document.getElementById('chk').onclick=go;inp.onkeydown=e=>{if(e.key==='Enter'&&!S.done){e.preventDefault();go()}}}
-  else document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.i);answer(q.options[i].ok,i)});
+  else document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.i);if(!q.options[i].ok){b.classList.add('wrong','tried');b.disabled=true}answer(q.options[i].ok)});
 }
-function answer(ok,val){
-  if(S.done)return;S.done=true;const q=S.qs[S.i];
-  if(ok)S.score++;else S.wrong.push(q);
-  if(!S.retry)rec(q.sub,ok);
-  saveRun(true);
-  let corr;
-  if(q.type==='num'){const inp=document.getElementById('in');inp.disabled=true;inp.classList.add(ok?'right':'wrong');document.getElementById('chk').disabled=true;corr=`<span class="eq">${fmt(q.answer)}</span> ${q.unit}`}
-  else{document.querySelectorAll('.opt').forEach((b,i)=>{b.disabled=true;if(q.options[i].ok)b.classList.add('right');else if(i===val)b.classList.add('wrong')});corr=q.options.find(o=>o.ok).h}
-  const last=S.i===S.qs.length-1;
+function answer(ok){
+  if(S.done)return;const q=S.qs[S.i];
+  if(!ok)return miss(q);
+  if(!S.missed){S.score++;if(!S.retry)rec(q.sub,true)} /* נקודה רק על הצלחה בניסיון הראשון */
+  complete(q,S.missed?'retry':'first');
+}
+function miss(q){ /* טעות: אפשר לנסות שוב עד שמצליחים */
+  S.tries++;
+  if(!S.missed){S.missed=true;S.wrong.push(q);if(!S.retry)rec(q.sub,false)} /* נספרת כטעות פעם אחת */
+  if(q.type==='num'){const inp=document.getElementById('in');inp.classList.add('wrong','shake');
+    setTimeout(()=>{inp.classList.remove('wrong','shake');inp.value='';inp.focus({preventScroll:true})},650)}
   const fb=document.getElementById('fb');
-  fb.innerHTML=`<div class="fb ${ok?'ok':'bad'}"><h3>${ok?`<span class="mark">✓</span>${pick(['כל הכבוד!','נכון מאוד!','מעולה!','יפה מאוד!'])}`:`<span class="mark">✗</span>כמעט. התשובה הנכונה: <mark>${corr}</mark>`}</h3><div class="why">${q.explain}</div></div>`;
+  fb.innerHTML=`<div class="fb bad"><h3><span class="mark">✗</span>לא בדיוק. נסו שוב!</h3>${S.tries>=2?`<div class="why">צריכים עזרה? <button class="link" id="showsol">הראו לי את הפתרון</button></div>`:''}</div>`;
+  const ss=document.getElementById('showsol');if(ss)ss.onclick=()=>complete(q,'solution');
+  fb.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function complete(q,how){ /* how: first = הצלחה בניסיון הראשון, retry = הצלחה אחרי טעות, solution = ראו את הפתרון */
+  S.done=true;saveRun(true);
+  let corr;
+  if(q.type==='num'){const inp=document.getElementById('in');inp.disabled=true;inp.classList.remove('wrong');if(how!=='solution')inp.classList.add('right');document.getElementById('chk').disabled=true;corr=`<span class="eq">${fmt(q.answer)}</span> ${q.unit}`}
+  else{document.querySelectorAll('.opt').forEach((b,i)=>{b.disabled=true;if(q.options[i].ok)b.classList.add('right')});corr=q.options.find(o=>o.ok).h}
+  const last=S.i===S.qs.length-1;
+  const head=how==='first'?`<span class="mark">✓</span>${pick(['כל הכבוד!','נכון מאוד!','מעולה!','יפה מאוד!'])}`
+    :how==='retry'?`<span class="mark">✓</span>הצלחתם! התשובה: <mark>${corr}</mark>`
+    :`<span class="mark">✗</span>הפתרון: <mark>${corr}</mark>`;
+  const fb=document.getElementById('fb');
+  fb.innerHTML=`<div class="fb ${how==='solution'?'bad':'ok'}"><h3>${head}</h3><div class="why">${q.explain}</div></div>`;
   document.getElementById('qbar').innerHTML=`<button class="btn big wide" id="nx">${last?'לסיום':'השאלה הבאה ←'}</button>`;
   const nx=document.getElementById('nx');nx.focus({preventScroll:true});nx.onclick=next;
   fb.scrollIntoView({behavior:'smooth',block:'nearest'});
